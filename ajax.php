@@ -9,6 +9,9 @@ define('IN_NYOS_PROJECT', true);
 require $_SERVER['DOCUMENT_ROOT'] . '/vendor/autoload.php';
 require( $_SERVER['DOCUMENT_ROOT'] . '/all/ajax.start.php' );
 
+
+// echo __FILE__.' '.__LINE__;
+
 //require_once( DR.'/vendor/didrive/base/class/Nyos.php' );
 //require_once( dirname(__FILE__).'/../class.php' );
 //if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'scan_new_datafile') {
@@ -21,6 +24,9 @@ if (
         (
         isset($_REQUEST['id']{0}) && isset($_REQUEST['s']{5}) &&
         \Nyos\nyos::checkSecret($_REQUEST['s'], $_REQUEST['id']) === true
+        ) || (
+        isset($_REQUEST['ids']{0}) && isset($_REQUEST['s']{5}) &&
+        \Nyos\nyos::checkSecret($_REQUEST['s'], $_REQUEST['ids']) === true
         ) || (
         isset($_REQUEST['id2']{0}) && isset($_REQUEST['s2']{5}) &&
         \Nyos\nyos::checkSecret($_REQUEST['s2'], $_REQUEST['id2']) === true
@@ -40,6 +46,42 @@ else {
     f\end2('Произошла неописуемая ситуация #' . __LINE__ . ' обратитесь к администратору ' . $e // . $_REQUEST['id'] . ' && ' . $_REQUEST['secret']
             , 'error');
 }
+
+
+foreach (\Nyos\Nyos::$menu as $k => $v) {
+    if ( isset($v['type_api']) && $v['type_api'] == 'time_expectation') {
+
+        if (!empty($v['server_host']))
+            \Nyos\api\JobExpectation::$sql_host = $v['server_host'];
+
+        if (!empty($v['server_port']))
+            \Nyos\api\JobExpectation::$sql_port = $v['server_port'];
+
+        if (!empty($v['server_base']))
+            \Nyos\api\JobExpectation::$sql_base = $v['server_base'];
+
+        if (!empty($v['server_login']))
+            \Nyos\api\JobExpectation::$sql_login = $v['server_login'];
+
+        if (!empty($v['server_pass']))
+            \Nyos\api\JobExpectation::$sql_pass = $v['server_pass'];
+
+        break;
+    }
+}
+
+
+if ( isset($_GET['action']) && $_GET['action'] == 'get_times' ) {
+
+    $e = \Nyos\api\JobExpectation::getExpectation( $_GET['date'] ?? date('Y-m-d',$_SERVER['REQUEST_TIME']-3600*24*4) );
+    \f\pa($e);
+
+    \f\end2('ok');
+    
+}
+
+
+
 
 //require_once( $_SERVER['DOCUMENT_ROOT'] . '/0.all/sql.start.php');
 //require( $_SERVER['DOCUMENT_ROOT'] . '/0.site/0.cfg.start.php');

@@ -23,6 +23,13 @@ class JobExpectation {
      */
     public static function getExpectation(string $start_date) {
 
+        echo 
+                '<br/> - '.self::$sql_host
+                .'<br/> - '.self::$sql_port
+                .'<br/> - '.self::$sql_base
+                .'<br/> - '.self::$sql_login
+                .'<br/> - '.self::$sql_pass;
+        
         $connection = mysqli_connect(
                 self::$sql_host . (!empty(self::$sql_port) ? ':' . self::$sql_port : '' )
                 , self::$sql_login ?? ''
