@@ -23,13 +23,6 @@ class JobExpectation {
      */
     public static function getExpectation(string $start_date) {
 
-        echo 
-                '<br/> - '.self::$sql_host
-                .'<br/> - '.self::$sql_port
-                .'<br/> - '.self::$sql_base
-                .'<br/> - '.self::$sql_login
-                .'<br/> - '.self::$sql_pass;
-        
         $connection = mysqli_connect(
                 self::$sql_host . (!empty(self::$sql_port) ? ':' . self::$sql_port : '' )
                 , self::$sql_login ?? ''
@@ -49,25 +42,43 @@ class JobExpectation {
                 mod_time >= UNIX_TIMESTAMP(STR_TO_DATE(\'' . date('Y-m-d', strtotime($start_date)) . ' 00:00:01\', \'%Y-%m-%d %H:%i:%s\'))
             GROUP BY 
                 FROM_UNIXTIME( mod_time, \'%Y-%m-%d %H\' )
+            ORDER BY 
+                mod_time ASC
             ;');
 
-        //while ( $row=mysqli_fetch_array($podr)) { 
-        $return = [];
+        $return2 = [];
 
         while ($row = mysqli_fetch_assoc($podr)) {
 
-            if (!isset($return[$row['date']][$row['sp']][$row['ceh']])) {
-                $return[$row['date']][$row['sp']][$row['ceh']] = $row['srednee_value'];
-            } else {
-                $return[$row['date']][$row['sp']][$row['ceh']] = round(($return[$row['date']][$row['sp']][$row['ceh']] + $row['srednee_value']) / 2, 1);
+            if (!isset($now_date)) {
+
+                $now_date = $row['date'];
+            } else if ((int) $row['hour'] >= 8) {
+
+                $now_date = $row['date'];
             }
-            // echo '<pre>';
-            //$row['mod_time2'] = date('Y-d-m H:i:s',$row['mod_time']);
-            // print_r($row);
-            // echo '</pre>';
+
+            if ($now_date == date('Y-m-d', $_SERVER['REQUEST_TIME']))
+                continue;
+
+            $return2[$now_date][$row['sp']][$row['ceh']][$row['hour']] = $row['srednee_value'];
+
+        }
+  
+        $re = [];
+        
+        foreach ($return2 as $date => $v) {
+            foreach ($v as $sp => $v1) {
+                foreach ($v1 as $ceh => $times) {
+                 
+                    $aa = (int) ( array_sum($times)/sizeof($times) * 10);
+                    $re[$date][$sp][$ceh] = $aa / 10;
+           
+                }
+            }
         }
 
-        \f\pa($return);
+        return \f\end3('ok', true, $re);
     }
 
 }
