@@ -15,17 +15,23 @@
  */
 $function = new Twig_SimpleFunction('ApiYadom_time_ex_get_timer_on_sp', function ( $db, string $sp_id, $date_start, $date_fin, $mod_link_time_to_sp = '074.time_expectations_links_to_sp', $mod_data_timer = '074.time_expectations_list' ) {
     
+//            $ff = $db->prepare('SELECT 
+//                    mi.id
+//                FROM 
+//                    mitems mi
+//                    
+//                INNER JOIN `mitems` mi2 ON  mi2.module = :mod_link_time_to_sp AND mi2.status = \'show\'
+//                INNER JOIN `mitems-dops` mid ON  mid.dops :mod_link_time_to_sp  mid. id_timeserver
+//                
+//                WHERE
+//                    mi.module = :mod_data_timer AND
+//                    mi.status = \'show\' 
+//                ');
             $ff = $db->prepare('SELECT 
-                    mi.id
+                    *
                 FROM 
                     mitems mi
-                    
-                INNER JOIN `mitems` mi2 ON  mi2.module = :mod_link_time_to_sp AND mi2.status = \'show\'
-                INNER JOIN `mitems-dops` mid ON  mid.dops :mod_link_time_to_sp  mid. id_timeserver
-                
-                WHERE
-                    mi.module = :mod_data_timer AND
-                    mi.status = \'show\' 
+                LIMIT 10
                 ');
 
             $ff->execute(array(
@@ -41,7 +47,8 @@ $function = new Twig_SimpleFunction('ApiYadom_time_ex_get_timer_on_sp', function
 
             $sql2 = '';
             while ($e = $ff->fetch()) {
-                echo '<br/>123123';
+                // echo '<br/>123123';
+                \f\pa($e);
             }
     
     return \Nyos\Nyos::creatSecret($text);
