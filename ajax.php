@@ -6,17 +6,14 @@ error_reporting(E_ALL); // E_ALL - отображаем ВСЕ ошибки
 date_default_timezone_set("Asia/Yekaterinburg");
 define('IN_NYOS_PROJECT', true);
 
+	ini_set("max_execution_time", 120 );
+
+
 header("Cache-Control: no-store, no-cache, must-revalidate");
 header("Expires: " . date("r"));
 
 require $_SERVER['DOCUMENT_ROOT'] . '/vendor/autoload.php';
 require( $_SERVER['DOCUMENT_ROOT'] . '/all/ajax.start.php' );
-
-
-
-
-
-
 
 foreach (\Nyos\Nyos::$menu as $k => $v) {
     if (isset($v['type_api']) && $v['type_api'] == 'time_expectation') {
@@ -41,7 +38,13 @@ foreach (\Nyos\Nyos::$menu as $k => $v) {
 }
 
 
-if (isset($_GET['action']) && $_GET['action'] == 'get_times_noajax') {
+if (isset($_GET['action']) && $_GET['action'] == 'load_timer_waiting') {
+
+    $e = \Nyos\api\JobExpectation::getTimerExpectation($db, $_GET['sp'], $_GET['date_start'], $_GET['date_fin'] );
+    \f\end2( 'получили данные по времени задержки', true, $e );
+}
+
+elseif (isset($_GET['action']) && $_GET['action'] == 'get_times_noajax') {
 
     // удаляем всё из таблицы
 //    $ff = $db->prepare('DELETE FROM mitems WHERE module = :id ');
@@ -49,11 +52,29 @@ if (isset($_GET['action']) && $_GET['action'] == 'get_times_noajax') {
 
     echo '<br/>' . __FILE__ . ' ' . __LINE__;
 
-    $e = \Nyos\api\JobExpectation::getExpectation( date('Y-m-d', $_SERVER['REQUEST_TIME'] - 3600 * 24 * 4) );
+    $e = \Nyos\api\JobExpectation::getExpectation(date('Y-m-d', $_SERVER['REQUEST_TIME'] - 3600 * 24 * 4));
 
     echo '<br/>результат в аякс файле ';
     $list = \Nyos\mod\items::getItems($db, \Nyos\Nyos::$folder_now, '074.time_expectations_list', 'show');
     // \f\pa($list);
+
+    /**
+     * достаём связи : id sp на сервере - id sp на сайте
+     */
+    // echo '<br/>22результат в аякс файле ';
+    $list2 = \Nyos\mod\items::getItems($db, \Nyos\Nyos::$folder_now, '074.time_expectations_links_to_sp', 'show');
+    //\f\pa($list2);
+
+    /**
+     * массив : id sp на сервере - id sp на сайте
+     */
+    $links_sp_and_sp_serv = [];
+
+    foreach ($list2['data'] as $k11 => $v11) {
+        $links_sp_and_sp_serv[$v11['dop']['id_timeserver']] = $v11['dop']['sale_point'];
+    }
+
+    // \f\pa($links_sp_and_sp_serv);
 
     $list2 = [];
     foreach ($list['data'] as $k => $v) {
@@ -72,10 +93,11 @@ if (isset($_GET['action']) && $_GET['action'] == 'get_times_noajax') {
 
                 // если нет такого
                 if (!isset($list2[$date . '--' . $sp . '--' . $otd])) {
-                    
+
                     $in2 = array(
                         'date' => $date,
                         'sp' => $sp,
+                        'sp_on_site' => ( $links_sp_and_sp_serv[$sp] ?? '' ),
                         'otdel' => $otd,
                         'minut' => $time
                     );
@@ -87,7 +109,7 @@ if (isset($_GET['action']) && $_GET['action'] == 'get_times_noajax') {
         }
     }
 
-    if (1 == 1 && class_exists('\\Nyos\\Msg')) {
+    if (1 == 2 && class_exists('\\Nyos\\Msg')) {
 
         if (!isset($vv['admin_auerific'])) {
             require_once DR . '/sites/' . \Nyos\nyos::$folder_now . '/config.php';
@@ -112,6 +134,36 @@ if (isset($_GET['action']) && $_GET['action'] == 'get_times_noajax') {
 
     \f\end2('ok', true, $in3);
 }
+
+/**
+ * получаем список точек что в базе на удалённом сервере
+ */
+elseif (isset($_GET['action']) && $_GET['action'] == 'get_times_tochki') {
+
+    // удаляем всё из таблицы
+//    $ff = $db->prepare('DELETE FROM mitems WHERE module = :id ');
+//    $ff->execute(array(':id' => '074.time_expectations_list'));
+
+    $connection = mysqli_connect(
+            \Nyos\api\JobExpectation::$sql_host . (!empty(\Nyos\api\JobExpectation::$sql_port) ? ':' . \Nyos\api\JobExpectation::$sql_port : '' )
+            , \Nyos\api\JobExpectation::$sql_login ?? ''
+            , \Nyos\api\JobExpectation::$sql_pass ?? ''
+            , \Nyos\api\JobExpectation::$sql_base ?? ''
+    );
+
+    $podr = mysqli_query($connection, 'select 
+                *
+            from 
+                `location` 
+            ;');
+
+    while ($row = mysqli_fetch_assoc($podr)) {
+        \f\pa($row);
+    }
+
+    \f\end2('ok', true, $in3);
+}
+
 
 
 
@@ -156,23 +208,56 @@ else {
 }
 
 
+
+
+
+/**
+ * получаем время, либо с даты по текущее время, либо за последние 3 дня
+ */
 if (isset($_GET['action']) && $_GET['action'] == 'get_times') {
 
+    
     // удаляем всё из таблицы
+    if( isset($_GET['all_delete']) && $_GET['all_delete'] == 'da' ){
 //    $ff = $db->prepare('DELETE FROM mitems WHERE module = :id ');
 //    $ff->execute(array(':id' => '074.time_expectations_list'));
+    
+        echo '<br/>удаляем все данные';
+        
+    $ff = $db->prepare('DELETE FROM sushi_time_waiting ');
+    $ff->execute();
+    
+    }
 
-    echo '<br/>' . __FILE__ . ' ' . __LINE__;
-
-    $e = \Nyos\api\JobExpectation::getExpectation($_GET['date'] ?? date('Y-m-d', $_SERVER['REQUEST_TIME'] - 3600 * 24 * 4));
-
-    echo '<br/>результат в аякс файле ';
+    $e = \Nyos\api\JobExpectation::getExpectation( $db, $_GET['date'] ?? date('Y-m-d', $_SERVER['REQUEST_TIME'] - 3600 * 24 * 4));
+    
+    return false;
+    
+    // echo '<br/>результат в аякс файле ';
     $list = \Nyos\mod\items::getItems($db, \Nyos\Nyos::$folder_now, '074.time_expectations_list', 'show');
-    // \f\pa($list);
+    \f\pa($list);
+
+    /**
+     * достаём связи : id sp на сервере - id sp на сайте
+     */
+    // echo '<br/>22результат в аякс файле ';
+    $list2 = \Nyos\mod\items::getItems($db, \Nyos\Nyos::$folder_now, '074.time_expectations_links_to_sp', 'show');
+    //\f\pa($list2);
+
+    /**
+     * массив : id sp на сервере - id sp на сайте
+     */
+    $links_sp_and_sp_serv = [];
+
+    foreach ($list2['data'] as $k11 => $v11) {
+        $links_sp_and_sp_serv[$v11['dop']['id_timeserver']] = $v11['dop']['sale_point'];
+    }
+
+    // \f\pa($links_sp_and_sp_serv);
 
     $list2 = [];
     foreach ($list['data'] as $k => $v) {
-        $list2[$v['dop']['date'] . '--' . $v['dop']['sp'] . '--' . $v['dop']['otdel']] = 1;
+        $list2[$v['dop']['date'] . '--' . ( $v['dop']['sp_on_serv'] ?? '' ) . '--' . $v['dop']['otdel']] = 1;
     }
 
     $in3 = [];
@@ -187,10 +272,11 @@ if (isset($_GET['action']) && $_GET['action'] == 'get_times') {
 
                 // если нет такого
                 if (!isset($list2[$date . '--' . $sp . '--' . $otd])) {
-                    
+
                     $in2 = array(
                         'date' => $date,
-                        'sp' => $sp,
+                        'sp_on_serv' => $sp,
+                        'sale_point' => ( $links_sp_and_sp_serv[$sp] ?? '' ),
                         'otdel' => $otd,
                         'minut' => $time
                     );
@@ -202,7 +288,7 @@ if (isset($_GET['action']) && $_GET['action'] == 'get_times') {
         }
     }
 
-    if (1 == 1 && class_exists('\\Nyos\\Msg')) {
+    if (1 == 2 && class_exists('\\Nyos\\Msg')) {
 
         if (!isset($vv['admin_auerific'])) {
             require_once DR . '/sites/' . \Nyos\nyos::$folder_now . '/config.php';
@@ -226,35 +312,9 @@ if (isset($_GET['action']) && $_GET['action'] == 'get_times') {
     }
 
     \f\end2('ok', true, $in3);
-}
+} 
 
 
-elseif (isset($_GET['action']) && $_GET['action'] == 'get_times_tochki') {
-
-    // удаляем всё из таблицы
-//    $ff = $db->prepare('DELETE FROM mitems WHERE module = :id ');
-//    $ff->execute(array(':id' => '074.time_expectations_list'));
-
-        $connection = mysqli_connect(
-            \Nyos\api\JobExpectation::$sql_host . (!empty(\Nyos\api\JobExpectation::$sql_port) ? ':' . \Nyos\api\JobExpectation::$sql_port : '' )
-            , \Nyos\api\JobExpectation::$sql_login ?? ''
-            , \Nyos\api\JobExpectation::$sql_pass ?? ''
-            , \Nyos\api\JobExpectation::$sql_base ?? ''
-        );
-
-        $podr = mysqli_query($connection, 'select 
-                *
-            from 
-                `location` 
-            ;');
-
-        while ($row = mysqli_fetch_assoc($podr)) {
-            \f\pa($row);
-        }    
-    
-
-    \f\end2('ok', true, $in3);
-}
 
 \f\end2('Произошла неописуемая ситуация #' . __LINE__ . ' обратитесь к администратору', 'error');
 
