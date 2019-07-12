@@ -191,9 +191,6 @@ class JobExpectation {
         }
         // \f\pa($links_sp_and_sp_serv);
 
-
-
-
         $r = [];
 
         foreach ($re as $date => $v) {
@@ -232,7 +229,8 @@ class JobExpectation {
         }
 
         // \f\pa($rows,2);
-        \f\db\sql_insert_mnogo($db, 'sushi_time_waiting', $rows, array( 'folder' => \Nyos\Nyos::$folder_now ) );
+        // \f\db\sql_insert_mnogo($db, 'sushi_time_waiting', $rows, array( 'folder' => \Nyos\Nyos::$folder_now ) );
+        \Nyos\mod\items::addNewSimples( $db, '074.time_expectations_list', $rows);
 
         return \f\end3('ok', true, $re);
     }
