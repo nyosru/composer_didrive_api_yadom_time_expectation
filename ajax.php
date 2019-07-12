@@ -6,7 +6,7 @@ error_reporting(E_ALL); // E_ALL - отображаем ВСЕ ошибки
 date_default_timezone_set("Asia/Yekaterinburg");
 define('IN_NYOS_PROJECT', true);
 
-	ini_set("max_execution_time", 120 );
+ini_set("max_execution_time", 120);
 
 
 header("Cache-Control: no-store, no-cache, must-revalidate");
@@ -40,11 +40,115 @@ foreach (\Nyos\Nyos::$menu as $k => $v) {
 
 if (isset($_GET['action']) && $_GET['action'] == 'load_timer_waiting') {
 
-    $e = \Nyos\api\JobExpectation::getTimerExpectation($db, $_GET['sp'], $_GET['date_start'], $_GET['date_fin'] );
-    \f\end2( 'получили данные по времени задержки', true, $e );
-}
+    $e = \Nyos\api\JobExpectation::getTimerExpectation($db, $_GET['sp'], $_GET['date_start'], isset($_GET['date_fin']) ? $_GET['date_fin'] : date('Y-m-d', $_SERVER['REQUEST_TIME'] + 3600 * 24));
+    // $e['line'] = __LINE__;
+    \f\end2('получили данные по времени задержки', true, $e);
+    
+} elseif (isset($_GET['action']) && $_GET['action'] == 'load_data_from_server') {
 
-elseif (isset($_GET['action']) && $_GET['action'] == 'get_times_noajax') {
+    // удаляем всё из таблицы
+    if (isset($_GET['all_delete']) && $_GET['all_delete'] == 'da') {
+        $ff = $db->prepare('DELETE FROM mitems WHERE module = :id ');
+        $ff->execute(array(':id' => '074.time_expectations_list'));
+        echo '<br/>' . __FILE__ . ' ' . __LINE__;
+    }
+
+    echo '<br/>' . __FILE__ . ' ' . __LINE__;
+
+    $e = \Nyos\api\JobExpectation::getExpectation($db, '2019-05-01');
+    \f\pa($e, 2, null, '$e');
+
+    echo '<hr>';
+
+
+    /**
+     * достаём связи : id sp на сервере - id sp на сайте
+     */
+    // echo '<br/>22результат в аякс файле ';
+    $list1 = \Nyos\mod\items::getItems($db, \Nyos\Nyos::$folder_now, '074.time_expectations_links_to_sp', 'show');
+    //\f\pa($list2);
+    // массив : id sp на сервере - id sp на сайте
+    $links_sp_and_sp_serv = [];
+    foreach ($list1['data'] as $k11 => $v11) {
+        $links_sp_and_sp_serv[$v11['dop']['id_timeserver']] = $v11['dop']['sale_point'];
+    }
+
+
+
+
+    $data_in_db = [];
+
+
+    if (isset($_GET['all_delete']) && $_GET['all_delete'] == 'da') {
+        
+    } else {
+
+        echo '<br/>результат в аякс файле ';
+        $list = \Nyos\mod\items::getItemsSimple($db, '074.time_expectations_list', 'show');
+        \f\pa($list, 2, null, '$list');
+
+        foreach ($list['data'] as $k => $v) {
+            $data_in_db[$v['dop']['date'] . '--' . $v['dop']['sp'] . '--' . $v['dop']['otdel']] = 1;
+        }
+        \f\pa($data_in_db, 2, null, '$data_in_db');
+    }
+
+
+
+    $in3 = [];
+
+    foreach ($e['data'] as $date => $v) {
+        foreach ($v as $sp => $v1) {
+
+            foreach ($v1 as $otd => $time) {
+
+                if ($date == date('Y-m-d', $_SERVER['REQUEST_TIME']) )
+                    continue;
+
+                // если нет такого
+                if ( !empty( $date ) && !empty( $otd ) && !empty( $time ) && !isset($data_in_db[$date . '--' . $sp . '--' . $otd])) {
+
+                    $in2 = array(
+                        'date' => $date,
+                        'sale_point' => $sp,
+                        'sp_on_site' => ( $links_sp_and_sp_serv[$sp] ?? '' ),
+                        'otdel' => $otd,
+                        'minut' => $time
+                    );
+
+                    $in3[] = $in2;
+                }
+            }
+        }
+    }
+
+    \Nyos\mod\items::addNewSimples($db, '074.time_expectations_list', $in3);
+    
+    if (1 == 2 && class_exists('\\Nyos\\Msg')) {
+
+        if (!isset($vv['admin_auerific'])) {
+            require_once DR . '/sites/' . \Nyos\nyos::$folder_now . '/config.php';
+        }
+
+        $e = 'Подгружаем данные по времени ожидания, загружено новых записей (дата+точка+отдел+время ожидания): '  // . sizeof($in3);
+        ;
+
+        foreach ($in3 as $k => $v) {
+            $e .= PHP_EOL . $v['date'] . ' - ' . $v['sp'] . ' - ' . $v['otdel'] . ' - ' . $v['minut'];
+        }
+
+        \nyos\Msg::sendTelegramm($e, null, 1);
+
+        if (isset($vv['admin_auerific'])) {
+            foreach ($vv['admin_auerific'] as $k => $v) {
+                \nyos\Msg::sendTelegramm($e, $v);
+                //\Nyos\NyosMsg::sendTelegramm('Вход в управление ' . PHP_EOL . PHP_EOL . $e, $k );
+            }
+        }
+    }
+
+    \f\end2('ok', true, $in3);
+} elseif (isset($_GET['action']) && $_GET['action'] == 'get_times_noajax') {
 
     // удаляем всё из таблицы
 //    $ff = $db->prepare('DELETE FROM mitems WHERE module = :id ');
@@ -52,7 +156,9 @@ elseif (isset($_GET['action']) && $_GET['action'] == 'get_times_noajax') {
 
     echo '<br/>' . __FILE__ . ' ' . __LINE__;
 
-    $e = \Nyos\api\JobExpectation::getExpectation(date('Y-m-d', $_SERVER['REQUEST_TIME'] - 3600 * 24 * 4));
+    $e = \Nyos\api\JobExpectation::getExpectation($db, isset($_GET['date_start']) ? $_GET['date_start'] : date('Y-m-d', $_SERVER['REQUEST_TIME'] - 3600 * 24 * 4));
+
+    \f\pa($e);
 
     echo '<br/>результат в аякс файле ';
     $list = \Nyos\mod\items::getItems($db, \Nyos\Nyos::$folder_now, '074.time_expectations_list', 'show');
@@ -96,7 +202,7 @@ elseif (isset($_GET['action']) && $_GET['action'] == 'get_times_noajax') {
 
                     $in2 = array(
                         'date' => $date,
-                        'sp' => $sp,
+                        'sale_point' => $sp,
                         'sp_on_site' => ( $links_sp_and_sp_serv[$sp] ?? '' ),
                         'otdel' => $otd,
                         'minut' => $time
@@ -137,8 +243,7 @@ elseif (isset($_GET['action']) && $_GET['action'] == 'get_times_noajax') {
 
 /**
  * получаем список точек что в базе на удалённом сервере
- */
-elseif (isset($_GET['action']) && $_GET['action'] == 'get_times_tochki') {
+ */ elseif (isset($_GET['action']) && $_GET['action'] == 'get_times_tochki') {
 
     // удаляем всё из таблицы
 //    $ff = $db->prepare('DELETE FROM mitems WHERE module = :id ');
@@ -155,6 +260,32 @@ elseif (isset($_GET['action']) && $_GET['action'] == 'get_times_tochki') {
                 *
             from 
                 `location` 
+            ;');
+
+    while ($row = mysqli_fetch_assoc($podr)) {
+        \f\pa($row);
+    }
+
+    \f\end2('ok', true, $in3);
+} elseif (isset($_GET['action']) && $_GET['action'] == 'test_sql1') {
+
+    // удаляем всё из таблицы
+//    $ff = $db->prepare('DELETE FROM mitems WHERE module = :id ');
+//    $ff->execute(array(':id' => '074.time_expectations_list'));
+
+    $connection = mysqli_connect(
+            \Nyos\api\JobExpectation::$sql_host . (!empty(\Nyos\api\JobExpectation::$sql_port) ? ':' . \Nyos\api\JobExpectation::$sql_port : '' )
+            , \Nyos\api\JobExpectation::$sql_login ?? ''
+            , \Nyos\api\JobExpectation::$sql_pass ?? ''
+            , \Nyos\api\JobExpectation::$sql_base ?? ''
+    );
+
+    $podr = mysqli_query($connection, 'select 
+                *
+            from 
+                `dbo.ItemSaleEvent` 
+                
+            LIMIT 10
             ;');
 
     while ($row = mysqli_fetch_assoc($podr)) {
@@ -216,23 +347,22 @@ else {
  */
 if (isset($_GET['action']) && $_GET['action'] == 'get_times') {
 
-    
+
     // удаляем всё из таблицы
-    if( isset($_GET['all_delete']) && $_GET['all_delete'] == 'da' ){
+    if (isset($_GET['all_delete']) && $_GET['all_delete'] == 'da') {
 //    $ff = $db->prepare('DELETE FROM mitems WHERE module = :id ');
 //    $ff->execute(array(':id' => '074.time_expectations_list'));
-    
+
         echo '<br/>удаляем все данные';
-        
-    $ff = $db->prepare('DELETE FROM sushi_time_waiting ');
-    $ff->execute();
-    
+
+        $ff = $db->prepare('DELETE FROM sushi_time_waiting ');
+        $ff->execute();
     }
 
-    $e = \Nyos\api\JobExpectation::getExpectation( $db, $_GET['date'] ?? date('Y-m-d', $_SERVER['REQUEST_TIME'] - 3600 * 24 * 4));
-    
+    $e = \Nyos\api\JobExpectation::getExpectation($db, $_GET['date'] ?? date('Y-m-d', $_SERVER['REQUEST_TIME'] - 3600 * 24 * 4));
+
     return false;
-    
+
     // echo '<br/>результат в аякс файле ';
     $list = \Nyos\mod\items::getItems($db, \Nyos\Nyos::$folder_now, '074.time_expectations_list', 'show');
     \f\pa($list);
@@ -312,7 +442,7 @@ if (isset($_GET['action']) && $_GET['action'] == 'get_times') {
     }
 
     \f\end2('ok', true, $in3);
-} 
+}
 
 
 
