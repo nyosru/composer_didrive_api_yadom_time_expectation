@@ -17,6 +17,13 @@ class JobExpectation {
     public static $sql_pass = '';
     public static $sql_base = '';
 
+    /**
+     * переменная для блокировки записи полученных данных
+     * если тру - то блокируем / если фальсе - то не блокируем и записываем
+     * @var type 
+     */
+    public static $no_write_data = false;
+
     public static function creatTable($db) {
 
 
@@ -42,7 +49,6 @@ class JobExpectation {
         \nyos\Msg::sendTelegramm('Создали таблицы для времени ожидания суши', null, 1);
     }
 
-    
     /**
      * получаем массив времени ожидания данных по точке продаж
      * @param type $db
@@ -66,20 +72,20 @@ class JobExpectation {
                 WHERE
                     `sp` = :sp_id
                     '
-                    .'
+                    . '
                     AND `date` >= :date_start 
                     '
-                    .'
+                    . '
                     AND date <= :date_fin 
                     '
-                    ;
+            ;
 
             // echo '<pre>' . $sql . '</pre>';
 
             $ff = $db->prepare($sql);
             $db2 = array(
                 ':sp_id' => $sp_id,
-                ':date_start' => date('Y-m-d', strtotime($date_start)) ,
+                ':date_start' => date('Y-m-d', strtotime($date_start)),
                 ':date_fin' => date('Y-m-d', strtotime($date_fin)),
             );
             // \f\pa($db2);
@@ -87,7 +93,7 @@ class JobExpectation {
 
             //$return = $ff->fetchAll();
             $return = [];
-            while( $r = $ff->fetch() ){
+            while ($r = $ff->fetch()) {
                 $return[$r['date']] = $r;
             }
             // \f\pa($return);
@@ -116,14 +122,17 @@ class JobExpectation {
             }
         }
 
-     //   return $return;
+        //   return $return;
     }
 
     /**
-     * грузим среднее ожидания за промежуток дней от старт до сегодня
-     * @param string $start_date
+     * получаем время ожидания по умолчанию для цехов и пишем в модуль что определили в переменной
+     * если не определили в параметрах модуль а ноль .. то только массив возвращаем
+     * @param type $db
+     * @param type $mod_for_time_default
+     * @return type
      */
-    public static function getExpectation( $db, string $start_date) {
+    public static function getExpectationFromServerDefaultTime($db, $mod_for_time_default = '074.time_expectations_default') {
 
         $connection = mysqli_connect(
                 self::$sql_host . (!empty(self::$sql_port) ? ':' . self::$sql_port : '' )
@@ -132,16 +141,81 @@ class JobExpectation {
                 , self::$sql_base ?? ''
         );
 
+        $podr = mysqli_query($connection, 'select '
+                . ' * '
+//                .' FROM_UNIXTIME( mod_time, \'%Y-%m-%d\' ) date,
+//                loc_id sp,
+//                dep_id ceh,
+//                FROM_UNIXTIME( mod_time, \'%H\' ) hour,
+//                round(AVG(dep_value),1) srednee_value
+//                '
+                . '
+            from 
+                `department` 
+                '
+//            ' WHERE
+//                mod_time >= UNIX_TIMESTAMP(STR_TO_DATE(\'' . date('Y-m-d', strtotime($start_date)) . ' 00:00:01\', \'%Y-%m-%d %H:%i:%s\'))
+//                '
+//                .'
+//            GROUP BY 
+//                FROM_UNIXTIME( mod_time, \'%Y-%m-%d %H\' )
+//                '
+//                .'
+//            ORDER BY 
+//                mod_time ASC
+//                '
+//            .'
+                . ' ;');
+
+        $def = [];
+
+        while ($row = mysqli_fetch_assoc($podr)) {
+
+            // \f\pa( $row , 2 , null, 'значения по умолчанию если нет данных по средней цифре' );
+            if (empty($mod_for_time_default)) {
+                $def[$row['id']] = $row['d_default'];
+            } else {
+                $def[] = array('otdel' => $row['id'], 'default' => $row['d_default']);
+            }
+        }
+
+        if (!empty($mod_for_time_default)) {
+
+            // удаляем данные что есть
+            \Nyos\mod\items::deleteItems($db, \Nyos\Nyos::$folder_now, $mod_for_time_default);
+            // пишем новые данные что загрузили выше
+            \Nyos\mod\items::addNewSimples($db, $mod_for_time_default, $def);
+        }
+
+        return \f\end3('окей загрузили данные по умолчанию для времени ожидания по цехам', true, $def);
+    }
+
+    /**
+     * грузим среднее ожидания за промежуток дней от старт до сегодня
+     * @param string $start_date
+     */
+    public static function getExpectation($db, $start_date = null, $mod_time_on_site = '074.time_expectations_list', $mod_link_sp_and_sp_on_server = '074.time_expectations_links_to_sp') {
+
+        $connection = mysqli_connect(
+                self::$sql_host . (!empty(self::$sql_port) ? ':' . self::$sql_port : '' )
+                , self::$sql_login ?? ''
+                , self::$sql_pass ?? ''
+                , self::$sql_base ?? ''
+        );
+
+
+        $date_start_ok = date('Y-m-d', (!empty($start_date) ? strtotime($start_date) : $_SERVER['REQUEST_TIME'] - 3600 * 24 * 4));
+
         $podr = mysqli_query($connection, 'select 
+                FROM_UNIXTIME( mod_time, \'%Y-%m-%d\' ) date,
                 loc_id sp,
                 dep_id ceh,
-                round(AVG(dep_value),1) srednee_value,
-                FROM_UNIXTIME( mod_time, \'%Y-%m-%d\' ) date,
-                FROM_UNIXTIME( mod_time, \'%H\' ) hour
+                FROM_UNIXTIME( mod_time, \'%H\' ) hour,
+                round(AVG(dep_value),1) srednee_value
             from 
                 `depTimeToday` 
             WHERE
-                mod_time >= UNIX_TIMESTAMP(STR_TO_DATE(\'' . date('Y-m-d', strtotime($start_date)) . ' 00:00:01\', \'%Y-%m-%d %H:%i:%s\'))
+                mod_time >= UNIX_TIMESTAMP(STR_TO_DATE(\'' . $date_start_ok . ' 00:00:01\', \'%Y-%m-%d %H:%i:%s\'))
             GROUP BY 
                 FROM_UNIXTIME( mod_time, \'%Y-%m-%d %H\' )
             ORDER BY 
@@ -151,6 +225,8 @@ class JobExpectation {
         $return2 = [];
 
         while ($row = mysqli_fetch_assoc($podr)) {
+
+            // \f\pa( $row , 2 , null, 'массив из базы сервера о времени ожидания' );
 
             if (!isset($now_date)) {
 
@@ -163,47 +239,79 @@ class JobExpectation {
             if ($now_date == date('Y-m-d', $_SERVER['REQUEST_TIME']))
                 continue;
 
-            $return2[$now_date][$row['sp']][$row['ceh']][$row['hour']] = $row['srednee_value'];
+            $return2[$now_date][$row['sp']][$row['ceh']][(int) $row['hour']] = $row['srednee_value'];
         }
 
-        $re = [];
-
-        foreach ($return2 as $date => $v) {
-            foreach ($v as $sp => $v1) {
-                foreach ($v1 as $ceh => $times) {
-                    $aa = (int) ( array_sum($times) / sizeof($times) * 10);
-                    $re[$date][$sp][$ceh] = $aa / 10;
-                }
-            }
-        }
-
-
+        //\f\pa($return2, 2, null, ' массив данных с сервера ');
 
         /**
          * достаём связи : id sp на сервере - id sp на сайте
          * массив : id sp на сервере - id sp на сайте
          */
-        // echo '<br/>22результат в аякс файле ';
-        $list2 = \Nyos\mod\items::getItems($db, \Nyos\Nyos::$folder_now, '074.time_expectations_links_to_sp', 'show');
+        $list2 = \Nyos\mod\items::getItems($db, \Nyos\Nyos::$folder_now, $mod_link_sp_and_sp_on_server, 'show');
         $links_sp_and_sp_serv = [];
         foreach ($list2['data'] as $k11 => $v11) {
             $links_sp_and_sp_serv[$v11['dop']['id_timeserver']] = $v11['dop']['sale_point'];
         }
-        // \f\pa($links_sp_and_sp_serv);
+        // \f\pa($links_sp_and_sp_serv, 2, null, 'связь точек продаж с сервра времени с точками на сайте');
 
-        $r = [];
+        $arr_srednee = [];
 
-        foreach ($re as $date => $v) {
-            $r['date'] = $date;
-
+        foreach ($return2 as $date => $v) {
             foreach ($v as $sp => $v1) {
 
                 if (!isset($links_sp_and_sp_serv[$sp]))
                     continue;
-                    
-                    $r['sp'] = $links_sp_and_sp_serv[$sp];
-                    $r['sp_on_server'] = $sp;
-                
+
+                foreach ($v1 as $ceh => $times) {
+                    $arr_srednee[$date][$sp][$ceh] = (int) ( ( array_sum($times) / count(array_filter($times)) ) * 10 ) / 10;
+                }
+            }
+        }
+
+        // \f\pa($arr_srednee, 2, null, ' массив данных со средними значениями // дата - точка - цех - ср.время ');
+        
+
+/**
+ * вычисляем даты по которым уже есть данные
+ */
+        $list5 = \Nyos\mod\items::getItemsSimple($db, $mod_time_on_site);
+
+        $dtu3 = strtotime($date_start_ok);
+        
+        $list_est_data = [];
+        
+        foreach( $list5['data'] as $k => $v ){
+            if( $dtu3 <= strtotime($v['dop']['date']) ){
+                $list_est_data[$v['dop']['date']][$v['dop']['sale_point']] = 1;
+            }
+        }
+        
+        //\f\pa($list5, 2, '', '$list5 текущие данные в базе');
+        // \f\pa($list_est_data, 2, '', '$list_now_data текущие данные в базе');
+
+//        $links_sp_and_sp_serv = [];
+//        foreach ($list2['data'] as $k11 => $v11) {
+//            $links_sp_and_sp_serv[$v11['dop']['id_timeserver']] = $v11['dop']['sale_point'];
+//        }
+
+
+        /**
+         * вычисляем среднее значение за день и добавляем номер точки продаж на сайте
+         */
+        $rows = $r = [];
+
+        foreach ($arr_srednee as $date => $v) {
+            $r['date'] = $date;
+
+            foreach ($v as $sp => $v1) {
+
+//                if (!isset($links_sp_and_sp_serv[$sp]))
+//                    continue;
+
+                $r['sale_point'] = $links_sp_and_sp_serv[$sp];
+                $r['sp_on_serv'] = $sp;
+
                 foreach ($v1 as $ceh => $times) {
                     // $aa = (int) ( array_sum($times) / sizeof($times) * 10) / 10;
                     // $re[$date][$sp][$ceh] = $aa;
@@ -217,22 +325,39 @@ class JobExpectation {
                     }
                 }
 
-                
                 // \f\db\db2_insert($db, 'sushi_time_waiting', $r );
-                
+
+                // если нет таких данных, то пишем в массив для записи
+                if( !isset($list_est_data[$r['date']][$r['sale_point']]) ){
+                //\f\pa($r);
                 $rows[] = $r;
-                $r = array( 'date' => $date );
+                }
+                
+                $r = array('date' => $date);
             }
-            
-            
+
+
             $r = [];
         }
 
-        // \f\pa($rows,2);
-        // \f\db\sql_insert_mnogo($db, 'sushi_time_waiting', $rows, array( 'folder' => \Nyos\Nyos::$folder_now ) );
-        \Nyos\mod\items::addNewSimples( $db, '074.time_expectations_list', $rows);
+        // \f\pa($rows, 2, null, '$rows');
 
-        return \f\end3('ok', true, $re);
+
+        /**
+         * добавляем данные на сайт
+         */
+        // \f\db\sql_insert_mnogo($db, 'sushi_time_waiting', $rows, array( 'folder' => \Nyos\Nyos::$folder_now ) );
+        if (self::$no_write_data === true) {
+            echo 'Запись данных отменена';
+        } else {
+
+            if( sizeof($rows) > 0 )
+            \Nyos\mod\items::addNewSimples($db, $mod_time_on_site, $rows);
+            
+            self::$no_write_data = false;
+        }
+
+        return \f\end3('ok', true, $rows);
     }
 
 }

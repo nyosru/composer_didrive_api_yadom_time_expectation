@@ -1,7 +1,7 @@
 {
     "name": "didrive_api/yadom_time_expectation",
     "description": "работа со временем ожидания",
-    "version": "0.0.7",
+    "version": "0.0.8",
     
     "keywords": [
         "didrive", "module", "nyos", "uralweb.info"
