@@ -141,35 +141,57 @@ class JobExpectation {
       }
      */
 
-    public static function getTimerExpectation($db, string $sp_id, $date_start, $date_fin) {
-
+    /**
+     * получаем время по цехам (в выбранном промежутке дат) из БД сайта
+     * @param type $db
+     * @param int $sp_id
+     * @param type $date_start
+     * @param type $date_fin
+     * @return type
+     */
+    public static function getTimerExpectation($db, int $sp_id, $date_start, $date_fin) {
         //echo '<br/>== ' . $sp_id . ' , ' . $date_start . ' , ' . $date_fin;
 
         try {
 
-            $ret = \Nyos\mod\items::getItemsSimple($db, '074.time_expectations_list');
+//            \f\timer::start(121);
+//            \f\CalcMemory::start(121);
 
+            $cash_var = 'getTimerExpectation-' . $sp_id . '-' . $date_start . '-' . $date_fin;
+            $e = \f\Cash::getVar($cash_var);
+            //\f\pa($e);
+            if (!empty($e)) {
+
+//                echo '<br/>201: ' . \f\timer::stop('str', 121);
+//                echo '<br/>211: ' . \f\CalcMemory::stop(121);
+
+                return $e;
+            }
+
+            // \Nyos\mod\items::$show_sql = true;
+            \Nyos\mod\items::$join_where = ' INNER JOIN `mitems-dops` md1 ON md1.id_item = mi.id AND md1.name = \'date\' AND md1.value_date >= :ds AND md1.value_date <= :df 
+                    INNER JOIN `mitems-dops` md2 ON md2.id_item = mi.id AND md2.name = \'sale_point\' AND md2.value = :sp ';
+            \Nyos\mod\items::$var_ar_for_1sql = [
+                ':sp' => $sp_id,
+                ':ds' => date('Y-m-d', strtotime($date_start)),
+                ':df' => date('Y-m-d', strtotime($date_fin))
+            ];
+            $ret = \Nyos\mod\items::getItemsSimple3($db, '074.time_expectations_list');
+            // \f\pa($ret, 5, '', 'ret');
             //$return = $ff->fetchAll();
             $return = [];
-            foreach ($ret['data'] as $k => $v) {
+            foreach ($ret as $k => $v) {
                 //\f\pa($v);
-                if (isset($v['dop']['date']) &&
-                        $v['dop']['date'] >= $date_start && $v['dop']['date'] <= $date_fin &&
-                        isset($v['dop']['sale_point']) && $v['dop']['sale_point'] == $sp_id)
-                    $return[$v['dop']['date']] = $v['dop'];
+                $return[$v['date']] = $v;
             }
             // \f\pa($return);
 
-            return $return;
+            \f\Cash::setVar($cash_var, $return);
 
-//        $return = [];
-//        while ($e = $ff->fetch()) {
-//            \f\pa($e);
-//            $return[$e['date'] ?? ''][$e['sp']][$e['otdel']] = $e['minut'];
-//        }
-//
-//        \f\pa($return);
-//        file_put_contents($cash_file, json_encode($return));
+//            echo '<br/>20: ' . \f\timer::stop('str', 121);
+//            echo '<br/>21: ' . \f\CalcMemory::stop(121);
+
+            return $return;
         } catch (\PDOException $ex) {
 
 //            echo '<pre>--- ' . __FILE__ . ' ' . __LINE__ . '-------'
@@ -371,18 +393,14 @@ class JobExpectation {
          * достаём связи : id sp на сервере - id sp на сайте
          * массив : id sp на сервере - id sp на сайте
          */
-        $list2 = \Nyos\mod\items::getItems($db, \Nyos\Nyos::$folder_now, $mod, 'show');
-        //\f\pa($list2, 2, '', '$list2');
-        // $re = [];
-        foreach ($list2['data'] as $k11 => $v11) {
-            /**
-             * связка id На сервере и id на сайте
-             */
-            self::$tmp_links_sp['links_sp_serv_and_sp'][$v11['dop']['id_timeserver']] = $v11['dop']['sale_point'];
-            /**
-             * связка id на сайте и id На сервере 
-             */
-            self::$tmp_links_sp['links_sp_and_sp_serv'][$v11['dop']['sale_point']] = $v11['dop']['id_timeserver'];
+        // $list2 = \Nyos\mod\items::getItems($db, \Nyos\Nyos::$folder_now, $mod, 'show');
+        $list2 = \Nyos\mod\items::getItemsSimple3($db, $mod);
+
+        foreach ($list2 as $k11 => $v11) {
+            // связка id На сервере и id на сайте
+            self::$tmp_links_sp['links_sp_serv_and_sp'][$v11['id_timeserver']] = $v11['sale_point'];
+            // связка id на сайте и id На сервере 
+            self::$tmp_links_sp['links_sp_and_sp_serv'][$v11['sale_point']] = $v11['id_timeserver'];
         }
         // \f\pa($links_sp_and_sp_serv, 2, null, 'связь точек продаж с сервра времени с точками на сайте');
 
@@ -400,9 +418,11 @@ class JobExpectation {
 
         // $links = getLinksSpAndSpOnServ( $db , $mod_link_sp_and_sp_on_server );
         $links = self::getLinksSpAndSpOnServ($db);
+
         if (isset($_REQUEST['show_dop_info'])) {
             \f\pa($links, 2, '', '$links');
         }
+
         // связка id На сервере и id на сайте
         // $links['links_sp_and_sp_serv']
         // связка id на сайте и id На сервере 
@@ -431,17 +451,12 @@ class JobExpectation {
         // echo '<br/>2 - '.$date_fin_ok;
         //echo $links_sp_serv_and_sp[$_REQUEST['sp']];
 
-
-
         $sq2 = '';
 
         foreach ($links['links_sp_serv_and_sp'] as $id_sp_serv => $id_sp_local) {
 
             $sq2 .= (!empty($sq2) ? ' OR ' : '' ) . ' `loc_id` = \'' . $id_sp_local . '\' ';
         }
-
-
-
 
         $sql = 'select 
                 FROM_UNIXTIME( mod_time, \'%Y-%m-%d\' ) date,
@@ -620,18 +635,38 @@ class JobExpectation {
      * @param type $ceh
      * @return boolean
      */
-    public static function getExpectationLastOne( $id_sp_time = null, $ceh = 1) {
+    public static function getExpectationLastOne($id_sp_time = null, $ceh = 1) {
 
-        if (file_exists(self::$timer_last_cash_file) && filemtime(self::$timer_last_cash_file) > $_SERVER['REQUEST_TIME'] - 300) {
+//        echo date('Y-m-d H:i', filectime(self::$timer_last_cash_file) );
+//        echo '<br/>';
+//        echo date('Y-m-d H:i', filemtime(self::$timer_last_cash_file) );
+//        echo '<br/>';
+//        echo date('Y-m-d H:i', $_SERVER['REQUEST_TIME'] );
+//        echo '<br/>';
+//        echo date('Y-m-d H:i', $_SERVER['REQUEST_TIME'] - 60*5 );
+//        echo '<br/>';
+        // if (file_exists(self::$timer_last_cash_file) && ( filectime(self::$timer_last_cash_file) > $_SERVER['REQUEST_TIME'] - 60 * 5 )) {
+        if (file_exists(self::$timer_last_cash_file) && ( filectime(self::$timer_last_cash_file) > $_SERVER['REQUEST_TIME'] - 30 )) {
+
             $e = json_decode(file_get_contents(self::$timer_last_cash_file), true);
-            //echo __LINE__;
+//            echo '<br/>'.__LINE__;
+//            echo '<br/>'.$id_sp_time;
+//            \f\pa($e,2,'','из дамп файла');
 
-            if (isset($e[$id_sp_time][$ceh]))
-                return $e[$id_sp_time][$ceh];
+            if (isset($e[$id_sp_time][$ceh])) {
+
+//                echo '<br/>'.__LINE__;
+//                \f\pa($e);
+
+                return \f\end3('ок из дампа', true, array('timer' => $e[$id_sp_time][$ceh]));
+            }
         }
 
         //echo __LINE__;
-        
+//        echo '<hr>';
+//        echo $_SERVER['REQUEST_TIME'];
+//        echo '<hr>';
+
         $connection = mysqli_connect(
                 self::$sql_host . (!empty(self::$sql_port) ? ':' . self::$sql_port : '' )
                 , self::$sql_login ?? ''
@@ -639,34 +674,57 @@ class JobExpectation {
                 , self::$sql_base ?? ''
         );
 
-        $sql = 'select 
-                FROM_UNIXTIME( mod_time, \'%Y-%m-%d\' ) date,
-                loc_id sp_time_id,
-                dep_id ceh,
-                FROM_UNIXTIME( mod_time, \'%H\' ) hour,
-                FROM_UNIXTIME( mod_time, \'%m\' ) min,
-                mod_time,
-                dep_value value
-                
-            FROM
-                `depTimeToday` 
-' .
-//  '          WHERE 
+        $sql = 'SELECT '
+                . ' * '
+//                .' , '
+//                .' FROM_UNIXTIME( mod_time, \'%Y-%m-%d\' ) as date '
+                . ' , '
+                . ' FROM_UNIXTIME( mod_time, \'%Y-%m-%d %H:%m:00\' ) as dt '
+                . ' , '
+                . ' loc_id sp_time_id '
+                . ' , '
+                . ' dep_id ceh '
+//                .' , '
+//                .' FROM_UNIXTIME( mod_time, \'%H\' ) hour '
+//                .' , '
+//                .' FROM_UNIXTIME( mod_time, \'%m\' ) min '
+                . ' , '
+                . ' mod_time '
+                . ' , '
+                . ' dep_value value '
+                . ' FROM '
+                . ' `depTimeToday` '
+                . ' WHERE '
+
+//                .' id > 87306 '
+//                .( date('H',$_SERVER['REQUEST_TIME']) > 5
+                . ' mod_time > ' . strtotime(date('Y-m-d', $_SERVER['REQUEST_TIME'] - 3600 * 24) . ' 03:00:00')
+
 //                loc_id = ' . $id_sp_time . ' 
 //                    AND dep_id = ' . (int) $ceh 
-                '
-            GROUP BY 
-                loc_id, 
-                dep_id
-            ORDER BY 
-                mod_time DESC
-            ;';
+//                . ' GROUP BY 
+//                loc_id, 
+//                dep_id
+//            '
+                . ' ORDER BY '
+                . ' id DESC '
+                // . ' FROM_UNIXTIME( mod_time, \'%Y-%m-%d %H %m\' ) DESC'
+//                . 'dt DESC'
+//                . ' , '
+//                . ' loc_id ASC'
+//                . ' , '
+//                . 'dep_id ASC '
+                . ' LIMIT 0,500 '
+                . ' ;';
 
-        if (isset($_REQUEST['show_dop_info'])) {
+        if (isset($_REQUEST['show_dop_info']) || 1 == 2) {
             echo '<pre>' . $sql . '</pre>';
         }
 
         $podr = mysqli_query($connection, $sql);
+
+//        echo '<Br/>2 -- ' . mysqli_error($podr);
+//        echo '<Br/>3 -- ' . mysqli_errno($podr);
 
         $return3 = [];
         $return47 = [];
@@ -679,17 +737,51 @@ class JobExpectation {
             return false;
         }
 
+        $last_id = null;
         $return = [];
 
+        $nn = 1;
+
+//        echo '<table class=table >';
+
         while ($row = mysqli_fetch_assoc($podr)) {
-            $row['dt'] = date('Y-m-d H:i:s', $row['mod_time']);
-            $return[$row['sp_time_id']][$row['ceh']] = $row;
+
+            if (empty($last_id) && ( isset($last_id) && $last_id < $row['id'] )) {
+                $last_id = $row['id'];
+            }
+
+//            if ($nn == 1) {
+//                echo '<tr>';
+//                foreach ($row as $k => $v) {
+//                    echo '<td>' . $k . '</td>';
+//                }
+//                echo '</tr>';
+//            }
+//
+//            echo '<tr>';
+//            foreach ($row as $k => $v) {
+//                echo '<td>' . $v . '</td>';
+//            }
+//            echo '</tr>';
+//
+//            $row['dt'] = date('Y-m-d H:i:s', $row['mod_time']);
+//            
+            if (!isset($return[$row['sp_time_id']][$row['ceh']]))
+            //$return[$row['sp_time_id']][$row['ceh']] = $row;
+                $return[$row['sp_time_id']][$row['ceh']] = $row['value'];
+
+            $nn++;
         }
 
+        // echo '</table>';
         // \f\pa($return, 2, null, 'массив из базы сервера о времени ожидания');
         // \f\pa($return[3][1], 2, null, 'массив из базы сервера о времени ожидания');
 
         file_put_contents(self::$timer_last_cash_file, json_encode($return));
+
+        if (isset($return[$id_sp_time][$ceh])) {
+            return \f\end3('ок получили', true, array('timer' => $return[$id_sp_time][$ceh]));
+        }
 
         return $return;
     }

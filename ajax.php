@@ -3,10 +3,20 @@
 ini_set('display_errors', 'On'); // сообщения с ошибками будут показываться
 error_reporting(E_ALL); // E_ALL - отображаем ВСЕ ошибки
 
-date_default_timezone_set("Asia/Yekaterinburg");
+if ($_SERVER['HTTP_HOST'] == 'photo.uralweb.info' 
+        || $_SERVER['HTTP_HOST'] == 'yapdomik.uralweb.info' 
+        || $_SERVER['HTTP_HOST'] == 'a2.uralweb.info' 
+        || $_SERVER['HTTP_HOST'] == 'adomik.uralweb.info'
+) {
+    date_default_timezone_set("Asia/Omsk");
+} else {
+    date_default_timezone_set("Asia/Yekaterinburg");
+}
+
 define('IN_NYOS_PROJECT', true);
 
-ini_set("max_execution_time", 120);
+// ini_set("max_execution_time", 120);
+ini_set("max_execution_time", 59);
 
 header("Cache-Control: no-store, no-cache, must-revalidate");
 header("Expires: " . date("r"));
@@ -47,6 +57,24 @@ try {
      */
     if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'get_now_domen_timer') {
 
+        if (isset($_REQUEST['w']{2}) && isset($_REQUEST['h']{2})) {
+            // $_SERVER["HTTP_USER_AGENT"]
+
+            $txt = 'старт сайта таймера на устройстве'
+                    . PHP_EOL . $_SERVER["HTTP_USER_AGENT"]
+                    . PHP_EOL . 'разрешение - w:' . $_REQUEST['w'] . ' h:' . $_REQUEST['h']
+            ;
+
+            \nyos\Msg::sendTelegramm($txt, null, 1);
+
+            if (isset($vv['admin_ajax_job'])) {
+                foreach ($vv['admin_ajax_job'] as $k => $v) {
+                    \nyos\Msg::sendTelegramm($txt, $v);
+                    //\Nyos\NyosMsg::sendTelegramm('Вход в управление ' . PHP_EOL . PHP_EOL . $e, $k );
+                }
+            }
+        }
+
         /*
           {% set sp_all = api__importexport__getData( 'adomik.uralweb.info', 'sale_point' ) %}
           {#{ pa(sp_all) }#}
@@ -63,6 +91,7 @@ try {
 
         $now_sp_timer = null;
 
+        if( !empty($link['data']) )
         foreach ($link['data'] as $k => $v) {
             if ($v['status'] == 'show') {
                 for ($i = 1; $i <= 3; $i++) {
@@ -83,20 +112,26 @@ try {
             \f\end2('error', false);
         }
 
-        $e = \Nyos\api\JobExpectation::getExpectationLastOne();
+        //\f\pa($now_sp_timer);
+
+        $e = \Nyos\api\JobExpectation::getExpectationLastOne($now_sp_timer);
         // \f\pa( $e );
         //\f\pa( $_REQUEST );
 
-        if( isset( $e[$now_sp_timer][1]['value'] ) ) {
-            
+        if (isset($e['data']['timer']) && is_numeric($e['data']['timer'])) {
+            \f\end2('ok', true, ['time' => $e['data']['timer']]);
+        } elseif (isset($e[$now_sp_timer][1]['value'])) {
+
             sleep(1);
-            
+
             \f\end2('ok', true, ['time' => $e[$now_sp_timer][1]['value']]);
-        } else {
+        }
+        //
+        else {
             \f\end2('error', false);
         }
-
     }
+
     /**
      * версия с эксклюзивной базой данных (старая версия)
      */
@@ -152,9 +187,9 @@ try {
             // echo '<br/>' . $ds . ' - ' . $df;
 
             $e = \Nyos\api\JobExpectation::getExpectation($db, $ds, $df, ( $_REQUSET['sp'] ?? null));
-
             // \f\pa($e, '', '', 'Инфа из getExpectation');
-
+            //exit;
+            
             if ($e === false)
                 echo 'нет инфы из базы';
 
@@ -173,7 +208,8 @@ try {
                     require_once DR . '/sites/' . \Nyos\nyos::$folder_now . '/config.php';
                 }
 
-                $sp = \Nyos\mod\items::getItemsSimple($db, 'sale_point');
+                // $sp = \Nyos\mod\items::getItemsSimple($db, 'sale_point');
+                $sp = \Nyos\mod\items::getItemsSimple3($db, 'sale_point');
                 //\f\pa($sp);
 
                 $nn = 1;
@@ -188,7 +224,7 @@ try {
                         }
 
                         // \f\pa($v);
-                        $txt .= PHP_EOL . $date . ' ' . $sp['data'][$sp1]['head']
+                        $txt .= PHP_EOL . $date . ' ' . ( $sp[$sp1]['head'] ?? 'sp:'.$sp1 )
                                 . ' х:' . ( $v['cold'] ?? '-' )
                                 . ' г:' . ( $v['hot'] ?? '-' )
                                 . ' д:' . ( $v['delivery'] ?? '-' )
@@ -202,6 +238,8 @@ try {
                     $txt = 'Обработали данные по времени ожидания и новых не добавили, все данные есть';
                 }
 
+                \f\Cash::deleteKeyPoFilter(['TimerExpectation']);
+                
                 \nyos\Msg::sendTelegramm($txt, null, 1);
 
                 if (isset($vv['admin_ajax_job'])) {
@@ -546,7 +584,9 @@ try {
     \f\end2('Произошла неописуемая ситуация #' . __LINE__ . ' обратитесь к администратору', 'error');
 
     exit;
-} catch (\Exception $ex) {
+}
+//
+catch (\Exception $ex) {
 
     $e = 'ошибка в запросе ' . $_SERVER['REQUEST_URI'] . PHP_EOL
             . '<pre>--- ' . __FILE__ . ' ' . __LINE__ . '-------'
