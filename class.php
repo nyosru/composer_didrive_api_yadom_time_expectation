@@ -216,21 +216,24 @@ class JobExpectation {
      * @param type $mod_time_expectation
      * @return type
      */
-    public static function saveData($db, array $data, $mod_time_expectation = '074.time_expectations_list') {
+    public static function saveData($db, array $data, $date_start, $date_finish, $mod_time_expectation = '074.time_expectations_list') {
 
         ksort($data);
         // \f\pa($data, 2, '', '$data 2222');
 
         $start_d = $fin_d = '';
 
-        $res = \Nyos\mod\items::getItemsSimple($db, $mod_time_expectation);
+        // $res = \Nyos\mod\items::getItemsSimple($db, $mod_time_expectation);
+        $res = \Nyos\mod\items::getItemsSimple3($db, $mod_time_expectation);
         //\f\pa($res, 2, '', 'что уже в базе');
         $on_db = [];
-        foreach ($res['data'] as $k => $v) {
-            $v['dop']['id'] = $v['id'];
-            $on_db[$v['dop']['date']][$v['dop']['sale_point']] = $v['dop'];
+        foreach ($res as $k => $v) {
+            if ($v['date'] >= $date_start && $v['date'] <= $date_finish) {
+                $v['id'] = $v['id'];
+                $on_db[$v['date']][$v['sale_point']] = $v;
+            }
         }
-        // \f\pa($on_db, 2, '', 'что уже в базе 2');
+        \f\pa($on_db, 2, '', 'что уже в базе 2');
 
         $r = [];
 
@@ -258,6 +261,7 @@ class JobExpectation {
         }
 
         //\f\pa($est, 2, '', 'что уже в базе');
+        \f\pa($r, 2, '', 'что уже в базе');
 
         if (1 == 2) {
             // echo $start_d .' - '. $fin_d;
@@ -301,8 +305,8 @@ class JobExpectation {
         /**
          * добавляем новое
          */
+        \f\pa($r, 2, '', '$r');
         \Nyos\mod\items::addNewSimples($db, $mod_time_expectation, $r);
-        // \f\pa($r, 2, '', '$r');
 
         return $r;
     }

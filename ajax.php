@@ -3,10 +3,7 @@
 ini_set('display_errors', 'On'); // сообщения с ошибками будут показываться
 error_reporting(E_ALL); // E_ALL - отображаем ВСЕ ошибки
 
-if ($_SERVER['HTTP_HOST'] == 'photo.uralweb.info' 
-        || $_SERVER['HTTP_HOST'] == 'yapdomik.uralweb.info' 
-        || $_SERVER['HTTP_HOST'] == 'a2.uralweb.info' 
-        || $_SERVER['HTTP_HOST'] == 'adomik.uralweb.info'
+if ($_SERVER['HTTP_HOST'] == 'photo.uralweb.info' || $_SERVER['HTTP_HOST'] == 'yapdomik.uralweb.info' || $_SERVER['HTTP_HOST'] == 'a2.uralweb.info' || $_SERVER['HTTP_HOST'] == 'adomik.uralweb.info'
 ) {
     date_default_timezone_set("Asia/Omsk");
 } else {
@@ -87,26 +84,28 @@ try {
           {{ pa(sp_link) }}
          */
         $link = \Nyos\api\ImportExport::getLocalDump('adomik.uralweb.info', '074.time_expectations_links_to_sp');
-// \f\pa($link, 2, '', 'link');
+        // \f\pa($link, 2, '', 'link');
 
         $now_sp_timer = null;
 
-        if( !empty($link['data']) )
-        foreach ($link['data'] as $k => $v) {
-            if ($v['status'] == 'show') {
-                for ($i = 1; $i <= 3; $i++) {
-                    //echo '<br/>' . ( $v['dop']['site1'] ?? '' );
-                    if (isset($v['dop']['site' . $i]) && $v['dop']['site' . $i] == $_SERVER['HTTP_HOST']) {
-                        $now_sp_timer = $v['dop']['id_timeserver'];
-                        //\f\pa($v);
-                        break;
+        if (!empty($link['data']))
+            foreach ($link['data'] as $k => $v) {
+                if ($v['status'] == 'show') {
+                    for ($i = 1; $i <= 3; $i++) {
+                        //echo '<br/>' . ( $v['dop']['site1'] ?? '' );
+                        if (isset($v['dop']['site' . $i]) && $v['dop']['site' . $i] == $_SERVER['HTTP_HOST']) {
+                            //if (isset($v['dop']['site' . $i]) && $v['dop']['site' . $i] == 'tt3.timer.uralweb.info' ) {
+                            $now_sp_timer = $v['dop']['id_timeserver'];
+                            //\f\pa($v);
+                            break;
+                        }
                     }
+
+                    //$links[$sps['data'][$v['dop']['sale_point']]['dop']['head_translit']] = $v;
                 }
-
-                //$links[$sps['data'][$v['dop']['sale_point']]['dop']['head_translit']] = $v;
             }
-        }
 
+        // $now_sp_timer = 3;
 
         if ($now_sp_timer === null) {
             \f\end2('error', false);
@@ -115,7 +114,7 @@ try {
         //\f\pa($now_sp_timer);
 
         $e = \Nyos\api\JobExpectation::getExpectationLastOne($now_sp_timer);
-        // \f\pa( $e );
+        // \f\pa( $e,'','','$e' );
         //\f\pa( $_REQUEST );
 
         if (isset($e['data']['timer']) && is_numeric($e['data']['timer'])) {
@@ -187,9 +186,9 @@ try {
             // echo '<br/>' . $ds . ' - ' . $df;
 
             $e = \Nyos\api\JobExpectation::getExpectation($db, $ds, $df, ( $_REQUSET['sp'] ?? null));
-            // \f\pa($e, '', '', 'Инфа из getExpectation');
+            \f\pa($e, 2, '', 'Инфа из getExpectation');
             //exit;
-            
+
             if ($e === false)
                 echo 'нет инфы из базы';
 
@@ -197,7 +196,7 @@ try {
 //    echo '<hr>';
 //    echo '<hr>';
             //\f\pa($e, 2, null, '$e');
-            $adds_in_db = \Nyos\api\JobExpectation::saveData($db, $e);
+            $adds_in_db = \Nyos\api\JobExpectation::saveData($db, $e, $ds, $df);
 
 //    echo '<hr>';
 //    echo '<hr>';
@@ -224,7 +223,7 @@ try {
                         }
 
                         // \f\pa($v);
-                        $txt .= PHP_EOL . $date . ' ' . ( $sp[$sp1]['head'] ?? 'sp:'.$sp1 )
+                        $txt .= PHP_EOL . $date . ' ' . ( $sp[$sp1]['head'] ?? 'sp:' . $sp1 )
                                 . ' х:' . ( $v['cold'] ?? '-' )
                                 . ' г:' . ( $v['hot'] ?? '-' )
                                 . ' д:' . ( $v['delivery'] ?? '-' )
@@ -239,7 +238,7 @@ try {
                 }
 
                 \f\Cash::deleteKeyPoFilter(['TimerExpectation']);
-                
+
                 \nyos\Msg::sendTelegramm($txt, null, 1);
 
                 if (isset($vv['admin_ajax_job'])) {
@@ -283,92 +282,163 @@ try {
         // удаляем всё из таблицы
 //    $ff = $db->prepare('DELETE FROM mitems WHERE module = :id ');
 //    $ff->execute(array(':id' => '074.time_expectations_list'));
+        // echo '<br/>' . __FILE__ . ' ' . __LINE__;
+        $sps = \Nyos\mod\items::getItemsSimple3($db, 'sale_point');
 
-        echo '<br/>' . __FILE__ . ' ' . __LINE__;
-
-        $e = \Nyos\api\JobExpectation::getExpectation($db, isset($_REQUEST['date_start']) ? $_REQUEST['date_start'] : date('Y-m-d', $_SERVER['REQUEST_TIME'] - 3600 * 24 * 4));
-
-        \f\pa($e);
-
-        echo '<br/>результат в аякс файле ';
-        $list = \Nyos\mod\items::getItems($db, \Nyos\Nyos::$folder_now, '074.time_expectations_list', 'show');
-        // \f\pa($list);
 
         /**
          * достаём связи : id sp на сервере - id sp на сайте
-         */
-        // echo '<br/>22результат в аякс файле ';
-        $list2 = \Nyos\mod\items::getItems($db, \Nyos\Nyos::$folder_now, '074.time_expectations_links_to_sp', 'show');
-        //\f\pa($list2);
-
-        /**
          * массив : id sp на сервере - id sp на сайте
          */
+        $links = \Nyos\mod\items::getItemsSimple3($db, '074.time_expectations_links_to_sp');
         $links_sp_and_sp_serv = [];
-
-        foreach ($list2['data'] as $k11 => $v11) {
-            $links_sp_and_sp_serv[$v11['dop']['id_timeserver']] = $v11['dop']['sale_point'];
+        foreach ($links as $v11) {
+            $links_sp_and_sp_serv[$v11['id_timeserver']] = $v11['sale_point'];
         }
 
-        // \f\pa($links_sp_and_sp_serv);
+        $date_start = isset($_REQUEST['date_start']) ? date('Y-m-d', strtotime($_REQUEST['date_start'])) : date('Y-m-d', $_SERVER['REQUEST_TIME'] - 3600 * 24 * 4);
+        $new_data = \Nyos\api\JobExpectation::getExpectation($db, $date_start);
+        // \f\pa($new_data, 2, '', '$new_data');
 
-        $list2 = [];
-        foreach ($list['data'] as $k => $v) {
-            $list2[$v['dop']['date'] . '--' . $v['dop']['sp'] . '--' . $v['dop']['otdel']] = 1;
+
+
+        \Nyos\mod\items::$join_where = ' INNER JOIN `mitems-dops` mid '
+                . ' ON mid.id_item = mi.id '
+                . ' AND mid.name = \'date\' '
+                . ' AND mid.value_date >= \'' . $date_start . '\' '
+        ;
+        $list = \Nyos\mod\items::getItemsSimple3($db, '074.time_expectations_list');
+        // \f\pa($list);
+
+        $now_db_id = $now_db = [];
+
+        foreach ($list as $v) {
+
+            $now_db_id[$v['date']][$v['sale_point']] = $v['id'];
+            $v1 = [];
+
+            if (!empty($v['cold']))
+                $v1['cold'] = $v['cold'];
+
+            if (!empty($v['hot']))
+                $v1['hot'] = $v['hot'];
+
+            if (!empty($v['delivery']))
+                $v1['delivery'] = $v['delivery'];
+
+            $now_db[$v['date']][$v['sale_point']] = $v1;
         }
 
-        $in3 = [];
+        // \f\pa($now_db, 2, '', 'now_db');
 
-        foreach ($e['data'] as $date => $v) {
-            foreach ($v as $sp => $v1) {
+        $sql_to_delete = '';
+        $sql_to_delete_vars = [];
+        $nn = 0;
+        $in_db = [];
 
-                foreach ($v1 as $otd => $time) {
+        foreach ($new_data as $date => $v1) {
+            foreach ($v1 as $sp => $v) {
 
-                    if ($date == date('Y-m-d', $_SERVER['REQUEST_TIME']))
-                        continue;
+                if (isset($now_db[$date][$sp]) && $now_db[$date][$sp] == $v) {
+                    // echo '<br/>' . __LINE__ . ' ок';
+                } else {
 
-                    // если нет такого
-                    if (!isset($list2[$date . '--' . $sp . '--' . $otd])) {
+                    // echo '<br/>' . __LINE__ . ' не ок';
+                    // echo $now_db_id[$date][$sp];
 
-                        $in2 = array(
-                            'date' => $date,
-                            'sale_point' => $sp,
-                            'sp_on_site' => ( $links_sp_and_sp_serv[$sp] ?? '' ),
-                            'otdel' => $otd,
-                            'minut' => $time
-                        );
+                    if (!empty($now_db_id[$date][$sp])) {
 
-                        $in3[] = $in2;
-                        \Nyos\mod\items::addNewSimple($db, '074.time_expectations_list', $in2);
+                        // echo '<br/>' . __LINE__ . ' удаляем ' . $now_db_id[$date][$sp];
+                        $sql_to_delete .= ( empty($sql_to_delete) ? '' : ' OR ' ) . ' `id` = :id' . $nn;
+
+                        $sql_to_delete_vars[':id' . $nn] = $now_db_id[$date][$sp];
+                        $nn++;
                     }
+
+                    $v['date'] = $date;
+                    $v['sale_point'] = $sp;
+                    // \f\pa($v);
+
+                    $in_db[] = $v;
                 }
             }
         }
 
-        if (1 == 2 && class_exists('\\Nyos\\Msg')) {
+        // echo ;
+
+        if (!empty($sql_to_delete)) {
+            $sql = 'UPDATE mitems SET `status` = \'delete\' WHERE `module` = \'074.time_expectations_list\' AND ( ' . $sql_to_delete . ' ) ';
+            $ff = $db->prepare($sql);
+            // \f\pa($sql_to_delete_vars);
+            $ff->execute($sql_to_delete_vars);
+        }
+
+        // \f\pa($in_db);
+
+        \Nyos\mod\items::addNewSimples($db, '074.time_expectations_list', $in_db);
+
+        // \f\end2('ok', true, $in3);
+
+
+        if (1 == 1 && class_exists('\\Nyos\\Msg')) {
 
             if (!isset($vv['admin_auerific'])) {
                 require_once DR . '/sites/' . \Nyos\nyos::$folder_now . '/config.php';
             }
 
-            $e = 'Подгружаем данные по времени ожидания, загружено новых записей (дата+точка+отдел+время ожидания): '  // . sizeof($in3);
-            ;
+            if (!empty($in_db)) {
 
-            foreach ($in3 as $k => $v) {
-                $e .= PHP_EOL . $v['date'] . ' - ' . $v['sp'] . ' - ' . $v['otdel'] . ' - ' . $v['minut'];
-            }
+                $e = 'Время ожидания'
+                        . PHP_EOL
+                        . 'Загрузили данные и записали в базу данных: ' . sizeof($in_db)
+                        . PHP_EOL
+                        . ' дата / горячий + холодный + доставка'
+                ;
 
-            \nyos\Msg::sendTelegramm($e, null, 1);
+                foreach ($sps as $sp) {
 
-            if (isset($vv['admin_auerific'])) {
-                foreach ($vv['admin_auerific'] as $k => $v) {
-                    \nyos\Msg::sendTelegramm($e, $v);
-                    //\Nyos\NyosMsg::sendTelegramm('Вход в управление ' . PHP_EOL . PHP_EOL . $e, $k );
+                    if ($sp['head'] == 'default')
+                        continue;
+
+                    $e .= PHP_EOL . '-- ' . $sp['head'] . ' --';
+
+                    foreach ($in_db as $v) {
+                        if ($v['sale_point'] == $sp['id']) {
+                            $e .= PHP_EOL . $v['date'] . ' / '
+                                    . ( $v['hot'] ?? 'x' )
+                                    . ' + '
+                                    . ( $v['cold'] ?? 'x' )
+                                    . ' + '
+                                    . ( $v['delivery'] ?? 'x' )
+                            ;
+                        }
+                    }
+                }
+
+                \nyos\Msg::sendTelegramm($e, null, 1);
+
+                if (isset($vv['admin_auerific'])) {
+                    foreach ($vv['admin_auerific'] as $k => $v) {
+                        \nyos\Msg::sendTelegramm($e, $v);
+                        //\Nyos\NyosMsg::sendTelegramm('Вход в управление ' . PHP_EOL . PHP_EOL . $e, $k );
+                    }
+                }
+            } else {
+
+                $e = 'загрузка времени ожидания, новых записей нет ... обратите внимание';
+
+                \nyos\Msg::sendTelegramm($e, null, 1);
+
+                if (isset($vv['admin_auerific'])) {
+                    foreach ($vv['admin_auerific'] as $k => $v) {
+                        \nyos\Msg::sendTelegramm($e, $v);
+                        //\Nyos\NyosMsg::sendTelegramm('Вход в управление ' . PHP_EOL . PHP_EOL . $e, $k );
+                    }
                 }
             }
         }
 
-        \f\end2('ok', true, $in3);
+        \f\end2('ok', true, ['load_kolvo' => $nn, 'in_db' => $in_db]);
     }
 
     /**
