@@ -154,11 +154,13 @@ class JobExpectation {
 
         try {
 
-//            \f\timer::start(121);
-//            \f\CalcMemory::start(121);
+            // \f\timer::start(121);
+            // \f\CalcMemory::start(121);
+            // \f\Cash::deleteKeyPoFilter( ['getTimerExpectation'] );
 
             $cash_var = 'getTimerExpectation-' . $sp_id . '-' . $date_start . '-' . $date_fin;
             $e = \f\Cash::getVar($cash_var);
+
             //\f\pa($e);
             if (!empty($e)) {
 
@@ -186,7 +188,7 @@ class JobExpectation {
             }
             // \f\pa($return);
 
-            \f\Cash::setVar($cash_var, $return);
+            \f\Cash::setVar($cash_var, $return, 60*60*4 );
 
 //            echo '<br/>20: ' . \f\timer::stop('str', 121);
 //            echo '<br/>21: ' . \f\CalcMemory::stop(121);
@@ -461,6 +463,28 @@ class JobExpectation {
 
             $sq2 .= (!empty($sq2) ? ' OR ' : '' ) . ' `loc_id` = \'' . $id_sp_local . '\' ';
         }
+
+
+
+        /**
+         * достаём id всех точек что есть на удалённом сервере
+         */
+        if (1 == 2) {
+
+            $sql .= ' SELECT * FROM depTimeToday GROUP BY loc_id ;';
+            \f\pa($sql);
+            $podr = mysqli_query($connection, $sql);
+            while ($row = mysqli_fetch_assoc($podr)) {
+                // \f\pa($row);
+                echo '<br/>'.$row['loc_id'];
+            }
+
+        }
+
+
+
+
+
 
         $sql = 'select 
                 FROM_UNIXTIME( mod_time, \'%Y-%m-%d\' ) date,

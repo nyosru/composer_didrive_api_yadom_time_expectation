@@ -54,13 +54,29 @@ try {
      */
     if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'get_now_domen_timer') {
 
+
+
+
+
         if (isset($_REQUEST['w']{2}) && isset($_REQUEST['h']{2})) {
             // $_SERVER["HTTP_USER_AGENT"]
 
-            $txt = 'старт сайта таймера на устройстве'
-                    . PHP_EOL . $_SERVER["HTTP_USER_AGENT"]
-                    . PHP_EOL . 'разрешение - w:' . $_REQUEST['w'] . ' h:' . $_REQUEST['h']
-            ;
+            $temp_var_name = 'run_site_time__'.$_SERVER['HTTP_HOST'] . '_' . $_REQUEST['w'] . '_' . $_REQUEST['h'];
+            $temp_var = \f\Cash::getVar($temp_var_name);
+
+            if ($temp_var == false) {
+
+                $txt = 'старт сайта таймера на устройстве'
+                        . PHP_EOL . $_SERVER["HTTP_USER_AGENT"]
+                        . PHP_EOL . 'разрешение - w:' . $_REQUEST['w'] . ' h:' . $_REQUEST['h']
+                ;
+                \f\Cash::setVar($temp_var_name, date('Y-m-d H:i'), 60 * 60 * 3);
+            } else {
+
+                $txt = 'работает норм, запущен в ' . $temp_var;
+                \f\Cash::setVar($temp_var_name, $temp_var, 60 * 60 * 3);
+            }
+
 
             \nyos\Msg::sendTelegramm($txt, null, 1);
 
@@ -71,6 +87,9 @@ try {
                 }
             }
         }
+
+
+
 
         /*
           {% set sp_all = api__importexport__getData( 'adomik.uralweb.info', 'sale_point' ) %}
@@ -297,6 +316,7 @@ try {
         }
 
         $date_start = isset($_REQUEST['date_start']) ? date('Y-m-d', strtotime($_REQUEST['date_start'])) : date('Y-m-d', $_SERVER['REQUEST_TIME'] - 3600 * 24 * 4);
+
         $new_data = \Nyos\api\JobExpectation::getExpectation($db, $date_start);
         // \f\pa($new_data, 2, '', '$new_data');
 
