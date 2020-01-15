@@ -61,12 +61,12 @@ try {
         if (isset($_REQUEST['w']{2}) && isset($_REQUEST['h']{2})) {
             // $_SERVER["HTTP_USER_AGENT"]
 
-            $temp_var_name = 'run_site_time__'.$_SERVER['HTTP_HOST'] . '_' . $_REQUEST['w'] . '_' . $_REQUEST['h'];
+            $temp_var_name = 'run_site_time__' . $_SERVER['HTTP_HOST'] . '_' . $_REQUEST['w'] . '_' . $_REQUEST['h'];
             $temp_var = \f\Cash::getVar($temp_var_name);
 
             if ($temp_var == false) {
 
-                $txt = 'старт сайта таймера на устройстве'
+                $txt = 'старт сайта таймера на устройстве.'
                         . PHP_EOL . $_SERVER["HTTP_USER_AGENT"]
                         . PHP_EOL . 'разрешение - w:' . $_REQUEST['w'] . ' h:' . $_REQUEST['h']
                 ;
@@ -137,16 +137,25 @@ try {
         //\f\pa( $_REQUEST );
 
         if (isset($e['data']['timer']) && is_numeric($e['data']['timer'])) {
-            \f\end2('ok', true, ['time' => $e['data']['timer']]);
+
+            \f\end2('ok', true, [
+                'time' => $e['data']['timer'],
+                'line' => __LINE__,
+            ]);
         } elseif (isset($e[$now_sp_timer][1]['value'])) {
 
             sleep(1);
 
-            \f\end2('ok', true, ['time' => $e[$now_sp_timer][1]['value']]);
+            \f\end2('ok', true, [
+                'time' => $e[$now_sp_timer][1]['value'],
+                'line' => __LINE__,
+            ]);
         }
         //
         else {
-            \f\end2('error', false);
+            \f\end2('error', false, [
+                'line' => __LINE__
+            ]);
         }
     }
 

@@ -156,13 +156,13 @@ class JobExpectation {
 
             // \f\timer::start(121);
             // \f\CalcMemory::start(121);
-            // \f\Cash::deleteKeyPoFilter( ['getTimerExpectation'] );
+            \f\Cash::deleteKeyPoFilter(['getTimerExpectation']);
 
             $cash_var = 'getTimerExpectation-' . $sp_id . '-' . $date_start . '-' . $date_fin;
             $e = \f\Cash::getVar($cash_var);
 
             //\f\pa($e);
-            if (!empty($e)) {
+            if (!empty($e) && 1 == 1) {
 
 //                echo '<br/>201: ' . \f\timer::stop('str', 121);
 //                echo '<br/>211: ' . \f\CalcMemory::stop(121);
@@ -188,7 +188,7 @@ class JobExpectation {
             }
             // \f\pa($return);
 
-            \f\Cash::setVar($cash_var, $return, 60*60*4 );
+            \f\Cash::setVar($cash_var, $return, 60 * 60 * 4);
 
 //            echo '<br/>20: ' . \f\timer::stop('str', 121);
 //            echo '<br/>21: ' . \f\CalcMemory::stop(121);
@@ -476,9 +476,8 @@ class JobExpectation {
             $podr = mysqli_query($connection, $sql);
             while ($row = mysqli_fetch_assoc($podr)) {
                 // \f\pa($row);
-                echo '<br/>'.$row['loc_id'];
+                echo '<br/>' . $row['loc_id'];
             }
-
         }
 
 
