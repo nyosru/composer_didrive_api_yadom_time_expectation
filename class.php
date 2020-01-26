@@ -420,7 +420,7 @@ class JobExpectation {
     public static function getExpectation($db, $start_date = null, $date_finish = null, $sp_now = null, $mod_time_on_site = '074.time_expectations_list', $mod_link_sp_and_sp_on_server = '074.time_expectations_links_to_sp') {
 
         if (isset($_REQUEST['show_dop_info']))
-            echo '<br/>' . $start_date . ' - ' . $date_finish . ' -- ' . $sp_now;
+            echo '<br/>' . $start_date . ' - ' . $date_finish . ' -- ' . $sp_now . ' -- ';
 
         // $links = getLinksSpAndSpOnServ( $db , $mod_link_sp_and_sp_on_server );
         $links = self::getLinksSpAndSpOnServ($db);
@@ -456,13 +456,19 @@ class JobExpectation {
         }
         // echo '<br/>2 - '.$date_fin_ok;
         //echo $links_sp_serv_and_sp[$_REQUEST['sp']];
-
-        $sq2 = '';
-
-        foreach ($links['links_sp_serv_and_sp'] as $id_sp_serv => $id_sp_local) {
-
-            $sq2 .= (!empty($sq2) ? ' OR ' : '' ) . ' `loc_id` = \'' . $id_sp_local . '\' ';
-        }
+//        $sq2 = '';
+//
+//        foreach ($links['links_sp_serv_and_sp'] as $id_sp_serv => $id_sp_local) {
+//        
+//            echo '<br/>11 + '.$sp_now.' ++ '.$id_sp_serv.' => '.$id_sp_local;
+//
+//            if( !empty( $sp_now ) && $sp_now != $id_sp_local )
+//                continue;
+//
+//            echo '<br/>22 + '.$id_sp_serv.' => '.$id_sp_local;
+//            
+//            $sq2 .= (!empty($sq2) ? ' OR ' : '' ) . ' `loc_id` = \'' . $id_sp_local . '\' ';
+//        }
 
 
 
@@ -479,11 +485,6 @@ class JobExpectation {
                 echo '<br/>' . $row['loc_id'];
             }
         }
-
-
-
-
-
 
         $sql = 'select 
                 FROM_UNIXTIME( mod_time, \'%Y-%m-%d\' ) date,
@@ -507,10 +508,8 @@ class JobExpectation {
         }
 
         if (!empty($sp_now) && isset($links['links_sp_and_sp_serv'][$sp_now])) {
-            $sql .= ' AND loc_id <= ' . $links['links_sp_and_sp_serv'][$sp_now] . ' ';
+            $sql .= ' AND loc_id = ' . $links['links_sp_and_sp_serv'][$sp_now] . ' ';
         }
-
-
 
         $sql .= ' ORDER BY 
                 loc_id ASC,
@@ -518,7 +517,7 @@ class JobExpectation {
             ;';
 
         if (isset($_REQUEST['show_dop_info'])) {
-            echo '<pre>' . $sql . '</pre>';
+            \f\pa($sql, '', '', 'sql запрос');
         }
 
         $podr = mysqli_query($connection, $sql);
@@ -551,11 +550,21 @@ class JobExpectation {
 
             //$return2[$now_date][$row['sp']][$row['ceh']][(int) $row['hour']] = $row['srednee_value'];
             //$return3[$now_date][$row['sp']][$row['ceh']][date('H:i', $row['mod_time'])] = $row['value'];
-            $return3[$now_date][$row['sp']][$row['ceh']][$row['mod_time']] = $row['value'];
+            $return3[$now_date][$row['sp']][$row['ceh']][$row['mod_time'] + 3600] = $row['value'];
         }
 
         if (isset($_REQUEST['show_dop_info'])) {
             \f\pa($return3, 2, '', '$return3');
+
+            foreach ($return3 as $date => $k) {
+                foreach ($k as $sp => $v) {
+                    foreach ($v as $ceh => $v1) {
+                        foreach ($v1 as $time => $var) {
+                            echo '<br/>' . $date . ' ' . $sp . ' ' . $ceh . ' ' . date('Y.m.d_H:i:s', $time) . ' ' . $var;
+                        }
+                    }
+                }
+            }
         }
 
         foreach ($return3 as $kdate => $v) {
@@ -564,14 +573,18 @@ class JobExpectation {
 //                continue;
 
             $d_start = strtotime($kdate . ' 10:00:00');
-            $d_fin = strtotime($kdate . ' 01:00:00') + 3600 * 24;
+            // $d_fin = strtotime($kdate . ' 01:00:00') + 3600 * 24;
+            $d_fin = strtotime($kdate . ' 01:00:00 +1 day');
 
             //echo '<h3>+ ' . $kdate . '</h3>';
 //            echo '<h5>+ ' . date( 'Y.m.d H:i',$d_start) . '</h5>';
 //            echo '<h5>+ ' . date( 'Y.m.d H:i',$d_fin) . '</h5>';
 
             $periods = ($d_fin - $d_start) / (60 * 5);
-//            echo '<hr>' . $periods;
+
+            if (isset($_REQUEST['show_dop_info'])) {
+                echo '<hr>периодов ' . $periods;
+            }
 
             foreach ($v as $ksp => $v2) {
 
