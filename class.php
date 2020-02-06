@@ -150,65 +150,64 @@ class JobExpectation {
      * @return type
      */
     public static function getTimerExpectation($db, int $sp_id, $date_start, $date_fin) {
+
         //echo '<br/>== ' . $sp_id . ' , ' . $date_start . ' , ' . $date_fin;
+        // $show_timer = true;
 
-        try {
+        if (isset($show_timer) && $show_timer === true)
+            \f\timer_start(7);
 
-            // \f\timer::start(121);
-            // \f\CalcMemory::start(121);
-            \f\Cash::deleteKeyPoFilter(['getTimerExpectation']);
+        // если нет переменной то не пишем кеш
+        $cash_var = 'JobExpectation__getTimerExpectation_' . \Nyos\mod\JobDesc::$mod_timeo . '_ds' . $date_start . '_df' . $date_fin;
+        // $cash_time_sec = 60 * 2;
 
-            $cash_var = 'getTimerExpectation-' . $sp_id . '-' . $date_start . '-' . $date_fin;
-            $e = \f\Cash::getVar($cash_var);
+        $return = [];
 
-            //\f\pa($e);
-            if (!empty($e) && 1 == 1) {
+        if (isset($show_timer) && $show_timer === true)
+            echo '<br/>#' . __LINE__ . ' var ' . ( $cash_var ?? '-' ) . ' t ' . ($cash_time_sec ?? '-');
 
-//                echo '<br/>201: ' . \f\timer::stop('str', 121);
-//                echo '<br/>211: ' . \f\CalcMemory::stop(121);
+        if (!empty($cash_var))
+            $return = \f\Cash::getVar($cash_var);
 
-                return $e;
-            }
+        if (!empty($return)) {
+            if (isset($show_timer) && $show_timer === true)
+                echo '<br/>#' . __LINE__ . ' тащим данные из кеша';
+        } else {
 
-            // \Nyos\mod\items::$show_sql = true;
-            \Nyos\mod\items::$join_where = ' INNER JOIN `mitems-dops` md1 ON md1.id_item = mi.id AND md1.name = \'date\' AND md1.value_date >= :ds AND md1.value_date <= :df 
-                    INNER JOIN `mitems-dops` md2 ON md2.id_item = mi.id AND md2.name = \'sale_point\' AND md2.value = :sp ';
+            if (isset($show_timer) && $show_timer === true)
+                echo '<br/>#' . __LINE__ . ' считаем данные и пишем в кеш';
+            
+            \Nyos\mod\items::$join_where = ' INNER JOIN `mitems-dops` md1 ON 
+                md1.id_item = mi.id 
+                AND md1.name = \'date\' 
+                AND md1.value_date >= :ds 
+                AND md1.value_date <= :df 
+                    INNER JOIN `mitems-dops` md2 ON 
+                    md2.id_item = mi.id 
+                    AND md2.name = \'sale_point\' 
+                    AND md2.value = :sp 
+                    ';
             \Nyos\mod\items::$var_ar_for_1sql = [
                 ':sp' => $sp_id,
                 ':ds' => date('Y-m-d', strtotime($date_start)),
                 ':df' => date('Y-m-d', strtotime($date_fin))
             ];
-            $ret = \Nyos\mod\items::getItemsSimple3($db, '074.time_expectations_list');
-            // \f\pa($ret, 5, '', 'ret');
-            //$return = $ff->fetchAll();
+
+            $ret = \Nyos\mod\items::get($db, \Nyos\mod\JobDesc::$mod_timeo);
+
             $return = [];
             foreach ($ret as $k => $v) {
-                //\f\pa($v);
                 $return[$v['date']] = $v;
             }
-            // \f\pa($return);
 
-            \f\Cash::setVar($cash_var, $return, 60 * 60 * 4);
-
-//            echo '<br/>20: ' . \f\timer::stop('str', 121);
-//            echo '<br/>21: ' . \f\CalcMemory::stop(121);
-
-            return $return;
-        } catch (\PDOException $ex) {
-
-//            echo '<pre>--- ' . __FILE__ . ' ' . __LINE__ . '-------'
-//            . PHP_EOL . $ex->getMessage() . ' #' . $ex->getCode()
-//            . PHP_EOL . $ex->getFile() . ' #' . $ex->getLine()
-//            . PHP_EOL . $ex->getTraceAsString()
-//            . '</pre>';
-
-            if (strpos($ex->getMessage(), 'no such table') !== false) {
-                self::creatTable($db);
-                return array();
-            }
+            if (!empty($return))
+                \f\Cash::setVar($cash_var, $return, ( $cash_time_sec ?? 0));
         }
 
-        //   return $return;
+        if (isset($show_timer) && $show_timer === true)
+            echo '<br/>#' . __LINE__ . ' ' . \f\timer_stop(7);
+
+        return $return;
     }
 
     /**

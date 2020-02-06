@@ -304,8 +304,151 @@ try {
         }
     }
 
-    //
+    // новая версия от 2020-02-07 подгрузки времени ожидания, с помощью АПИ
     elseif (isset($_REQUEST['action']) && $_REQUEST['action'] == 'get_times_noajax') {
+
+        $sps = \Nyos\mod\items::get($db, \Nyos\mod\JobDesc::$mod_sale_point);
+        $sps_link_timeo = \Nyos\mod\items::get($db, \Nyos\mod\JobDesc::$mod_sp_link_timeo);
+
+        // \f\pa($sps_link_timeo);
+
+        $link_sp_timeosp = [];
+        foreach ($sps_link_timeo as $k => $v) {
+            // \f\pa($v);
+            if (!empty($v['sale_point']) && !empty($v['id_timeserver']))
+                $link_sp_timeosp[$v['sale_point']] = $v['id_timeserver'];
+        }
+
+        // \f\pa($link_sp_timeosp);
+
+        \f\timer_start(3);
+
+        $ar__sp_date_time = [];
+
+        foreach ($sps as $k => $v) {
+
+            // \f\pa($v);
+
+            if (!isset($link_sp_timeosp[$v['id']]))
+                continue;
+
+            $q = ['sp' => $link_sp_timeosp[$v['id']],
+                // 'date' => '2020-02-01',
+                'date' => date('Y-m-d'),
+                's' => md5($link_sp_timeosp[$v['id']] . 'time' . date('Y-m-d'))
+            ];
+
+            $res_ar = json_decode(file_get_contents('http://time-exp.uralweb.info/api.php?' . http_build_query($q)), true);
+            // \f\pa($res_ar,2);
+
+            if (!empty($res_ar['status']) && $res_ar['status'] == 'ok' && !empty($res_ar['data'])) {
+                $ar__sp_date_time[$v['id']] = $res_ar['data'];
+            }
+
+            // echo \f\timer_stop(3,'str');
+        }
+
+        // \f\pa($ar__sp_date_time, 2, '', '$ar__sp_date_time');
+
+        \Nyos\mod\items::$join_where = ' INNER JOIN `mitems-dops` mid '
+                . ' ON mid.id_item = mi.id '
+                . ' AND mid.name = \'date\' '
+                . ' AND mid.value_date >= :d '
+        ;
+        \Nyos\mod\items::$var_ar_for_1sql[':d'] = date('Y-m-01');
+        $timeo = \Nyos\mod\items::get($db, \Nyos\mod\JobDesc::$mod_timeo);
+        // \f\pa($timeo, 2, '', '$timeo');
+
+        $timeo_all__sp_date = [];
+        foreach ($timeo as $k => $v) {
+            $timeo_all__sp_date[$v['sale_point']][$v['date']] = $v;
+        }
+        // \f\pa($timeo_all__sp_date, 2, '', '$timeo_all__sp_date');
+
+        $type = ['cold', 'hot', 'delivery'];
+
+        // новые полные записи
+        $new_db = [];
+        // изменять данные
+        $edit_dops = [];
+
+        foreach ($ar__sp_date_time as $sp1 => $dates) {
+            foreach ($dates as $date1 => $v1) {
+
+                // echo '<br/>' . $date1 . ' >> ' . $sp1;
+                // новые данные, в бд нет в загрузке есть 
+                if (!isset($timeo_all__sp_date[$sp1][$date1])) {
+                    // \f\pa($timeo_all__sp_date[$sp1][$date1]);
+                    // \f\pa($v1);
+                    $ss = [
+                        'date' => $date1,
+                        'sale_point' => $sp1,
+//                        'cold' => $v1['cold'],
+//                        'hot' => $v1['hot'],
+//                        'delivery' => $v1['delivery']
+                    ];
+
+                    foreach ($type as $t) {
+                        $ss[$t] = $v1[$t] ?? 0;
+                    }
+
+                    $new_db[] = $ss;
+                    continue;
+                }
+
+                $now = $timeo_all__sp_date[$sp1][$date1];
+
+                foreach ($type as $t) {
+
+                    // \f\pa($v1);
+                    // \f\pa($timeo_all__sp_date[$sp1][$date1]);
+                    // echo '<br/>' ;
+
+                    if (!isset($now[$t]) || ( isset($now[$t]) && $now[$t] != $v1[$t] )) {
+                        // echo  $t . ' ' . ( $now[$t] ?? '-' ) . ' != ' . ( $v1[$t] ?? '-' );
+                        $edit_dops[$now['id']][$t] = $v1[$t];
+                    }
+//                    else {
+//                        // echo  $t . ' ' . ( $now[$t] ?? '-' ) . ' == ' . ( $v1[$t] ?? '-' );
+//                    }
+                    // echo ' // id ' . ( $now['id'] ?? '-' );
+//                    \f\pa($v1);
+//                    \f\pa($timeo_all__sp_date[$sp1][$date1]);
+                }
+            }
+        }
+
+        // новые полные записи
+        // \f\pa($new_db,2,'','$new_db');
+        \Nyos\mod\items::addNewSimples($db, \Nyos\mod\JobDesc::$mod_timeo, $new_db);
+        // \f\pa($edit_dops,2,'','$edit_dops');
+        \Nyos\mod\items::saveNewDop($db, $edit_dops);
+
+
+
+        if (1 == 1 && class_exists('\\Nyos\\Msg')) {
+
+            $e = 'Время ожидания'
+                    . PHP_EOL
+                    . 'Загрузили и записали '
+                    .PHP_EOL
+                    .'( точка / дата / горячий + холодный + доставка';
+
+            foreach ($new_db as $v) {
+                $e .= PHP_EOL . $sps[$new_db['sale_point']]['head'] . '/' . $new_db['date'] . '/' . $new_db['cold'] . '+' . $new_db['hot'] . '+' . $new_db['delivery'];
+            }
+
+            \nyos\Msg::sendTelegramm($e, null, 2);
+        }
+
+        $r = ob_get_contents();
+        ob_end_clean();
+
+        \f\end2('ok' . $r, true, ['load_kolvo' => sizeof($new_db), 'in_db' => sizeof($new_db)]);
+    }
+
+    // старая версия подгрузки времени ожидания, подключаемся к базе и тащим
+    elseif (isset($_REQUEST['action']) && $_REQUEST['action'] == 'get_times_noajax-old2020-02-07') {
 
         ob_start('ob_gzhandler');
 
@@ -393,7 +536,6 @@ try {
 
 //        $date_start = isset($_REQUEST['date_start']) ? date('Y-m-d', strtotime($_REQUEST['date_start'])) : date('Y-m-d', $_SERVER['REQUEST_TIME'] - 3600 * 24 * 4);
 //        $new_data = \Nyos\api\JobExpectation::getExpectation($db, $date_start, ( $_REQUEST['date_finish'] ?? null), ( $_REQUEST['sp'] ?? null));
-
             //\Nyos\mod\items::$show_sql = true;
             \Nyos\mod\items::$join_where = '';
 
@@ -428,7 +570,7 @@ try {
 //            \Nyos\mod\items::$var_ar_for_1sql[':ds'] = $date_start;
 
             $l = \Nyos\mod\items::get($db, \Nyos\mod\JobDesc::$mod_timeo);
-            
+
             if (isset($_REQUEST['view']) && $_REQUEST['view'] == 'html')
                 \f\pa($l);
 
@@ -459,7 +601,7 @@ try {
                     echo '<h3>нет новых значений</h3>';
                 } else {
                     $save_new_dop = \Nyos\mod\items::saveNewDop($db, [$v['id'] => $new]);
-                //\f\pa($save_new_dop,'','','записали новые значения');
+                    //\f\pa($save_new_dop,'','','записали новые значения');
                     echo '<h3>записали новые значения</h3>';
                     \f\pa($new, '', '', 'new');
                 }
