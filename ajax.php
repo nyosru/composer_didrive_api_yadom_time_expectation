@@ -52,10 +52,7 @@ try {
     /**
      * версия с эксклюзивной базой данных (старая версия)
      */
-    if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'get_now_domen_timer') {
-
-
-
+    if (1 == 2 && isset($_REQUEST['action']) && $_REQUEST['action'] == 'get_now_domen_timer') {
 
 
         if (isset($_REQUEST['w']{2}) && isset($_REQUEST['h']{2})) {
@@ -159,10 +156,31 @@ try {
         }
     }
 
+    //
+    elseif (isset($_REQUEST['action']) && $_REQUEST['action'] == 'remove_hand_time_edit') {
+
+        if (!empty($_REQUEST['sp']) && !empty($_REQUEST['s']) && !empty($_REQUEST['date_month']) && \Nyos\Nyos::checkSecret($_REQUEST['s'], $_REQUEST['sp'] . $_REQUEST['date_month']) === true) {
+
+            ob_start('ob_gzhandler');
+
+            $res = \Nyos\api\JobExpectation::remove_hand_time_edit($db, $_REQUEST['sp'], $_REQUEST['date_month']);
+            // \f\pa($res);
+
+            $r = ob_get_contents();
+            ob_end_clean();
+
+            \f\end2($res['html'] . ( $r ?? '' ), true);
+            
+        } else {
+            \f\end2('что то пошло не так #' . __LINE__, false, $_REQUEST);
+        }
+    }
+
+
+
     /**
      * версия с эксклюзивной базой данных (старая версия)
-     */
-    if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'load_timer_waiting') {
+     */ elseif (1 == 2 && isset($_REQUEST['action']) && $_REQUEST['action'] == 'load_timer_waiting') {
 
         throw new \Exception('Старый способ');
 
@@ -224,6 +242,7 @@ try {
 //    echo '<hr>';
 //    echo '<hr>';
             //\f\pa($e, 2, null, '$e');
+
             $adds_in_db = \Nyos\api\JobExpectation::saveData($db, $e, $ds, $df);
 
 //    echo '<hr>';
@@ -348,7 +367,10 @@ try {
             // echo \f\timer_stop(3,'str');
         }
 
-        // \f\pa($ar__sp_date_time, 2, '', '$ar__sp_date_time');
+        if (!empty($_REQUEST['show'])) {
+            \f\pa($link_sp_timeosp, 2, '', '$link_sp_timeosp');
+            \f\pa($ar__sp_date_time, 2, '', '$ar__sp_date_time');
+        }
 
         \Nyos\mod\items::$join_where = ' INNER JOIN `mitems-dops` mid '
                 . ' ON mid.id_item = mi.id '
@@ -375,17 +397,12 @@ try {
         foreach ($ar__sp_date_time as $sp1 => $dates) {
             foreach ($dates as $date1 => $v1) {
 
-                // echo '<br/>' . $date1 . ' >> ' . $sp1;
                 // новые данные, в бд нет в загрузке есть 
                 if (!isset($timeo_all__sp_date[$sp1][$date1])) {
-                    // \f\pa($timeo_all__sp_date[$sp1][$date1]);
-                    // \f\pa($v1);
+
                     $ss = [
                         'date' => $date1,
                         'sale_point' => $sp1,
-//                        'cold' => $v1['cold'],
-//                        'hot' => $v1['hot'],
-//                        'delivery' => $v1['delivery']
                     ];
 
                     foreach ($type as $t) {
@@ -399,21 +416,9 @@ try {
                 $now = $timeo_all__sp_date[$sp1][$date1];
 
                 foreach ($type as $t) {
-
-                    // \f\pa($v1);
-                    // \f\pa($timeo_all__sp_date[$sp1][$date1]);
-                    // echo '<br/>' ;
-
                     if (!isset($now[$t]) || ( isset($now[$t]) && $now[$t] != $v1[$t] )) {
-                        // echo  $t . ' ' . ( $now[$t] ?? '-' ) . ' != ' . ( $v1[$t] ?? '-' );
                         $edit_dops[$now['id']][$t] = $v1[$t];
                     }
-//                    else {
-//                        // echo  $t . ' ' . ( $now[$t] ?? '-' ) . ' == ' . ( $v1[$t] ?? '-' );
-//                    }
-                    // echo ' // id ' . ( $now['id'] ?? '-' );
-//                    \f\pa($v1);
-//                    \f\pa($timeo_all__sp_date[$sp1][$date1]);
                 }
             }
         }
@@ -424,18 +429,17 @@ try {
         // \f\pa($edit_dops,2,'','$edit_dops');
         \Nyos\mod\items::saveNewDop($db, $edit_dops);
 
-
-
         if (1 == 1 && class_exists('\\Nyos\\Msg')) {
 
             $e = 'Время ожидания'
                     . PHP_EOL
                     . 'Загрузили и записали '
-                    .PHP_EOL
-                    .'( точка / дата / горячий + холодный + доставка';
+                    . PHP_EOL
+                    . '( точка / дата / горячий + холодный + доставка';
 
             foreach ($new_db as $v) {
-                $e .= PHP_EOL . $sps[$new_db['sale_point']]['head'] . '/' . $new_db['date'] . '/' . $new_db['cold'] . '+' . $new_db['hot'] . '+' . $new_db['delivery'];
+                // \f\pa($v);
+                $e .= PHP_EOL . $sps[$v['sale_point']]['head'] . '/' . $v['date'] . '/' . $v['cold'] . ' + ' . $v['hot'] . ' + ' . $v['delivery'];
             }
 
             \nyos\Msg::sendTelegramm($e, null, 2);

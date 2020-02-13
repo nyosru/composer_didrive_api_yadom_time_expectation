@@ -176,7 +176,7 @@ class JobExpectation {
 
             if (isset($show_timer) && $show_timer === true)
                 echo '<br/>#' . __LINE__ . ' считаем данные и пишем в кеш';
-            
+
             \Nyos\mod\items::$join_where = ' INNER JOIN `mitems-dops` md1 ON 
                 md1.id_item = mi.id 
                 AND md1.name = \'date\' 
@@ -208,6 +208,55 @@ class JobExpectation {
             echo '<br/>#' . __LINE__ . ' ' . \f\timer_stop(7);
 
         return $return;
+    }
+
+    /**
+     * удаляем все ручные изменения во времени ожидания
+     * @param type $db
+     * @param int $sp
+     * @param string $date_month
+     */
+    public static function remove_hand_time_edit($db, int $sp, string $date_month) {
+
+        $date_start = date('Y-m-01', strtotime($date_month));
+        $date_finish = date('Y-m-d', strtotime($date_start . ' +1 month -1 day'));
+
+        \Nyos\mod\items::$join_where = ' INNER JOIN `mitems-dops` mid '
+                . ' ON mid.id_item = mi.id '
+                . ' AND mid.name = \'date\' '
+                . ' AND mid.value_date >= :ds '
+                . ' AND mid.value_date <= :df '
+                . ' INNER JOIN `mitems-dops` mid2 '
+                . ' ON mid2.id_item = mi.id '
+                . ' AND mid2.name = \'sale_point\' '
+                . ' AND mid2.value = :sp '
+        ;
+        \Nyos\mod\items::$var_ar_for_1sql[':sp'] = $sp;
+        \Nyos\mod\items::$var_ar_for_1sql[':ds'] = $date_start;
+        \Nyos\mod\items::$var_ar_for_1sql[':df'] = $date_finish;
+        \Nyos\mod\items::$return_items_header = true;
+        $timeo = \Nyos\mod\items::get($db, \Nyos\mod\JobDesc::$mod_timeo);
+        //\f\pa($timeo);
+
+        $sql2 = '';
+        $n = 1;
+        $sql_in = [];
+        foreach ($timeo as $v) {
+            $sql2 .= (!empty($sql2) ? ' OR ' : '' ) . '`id_item` = :id' . $n;
+            $sql_in[':id' . $n] = $v['id'];
+            $n++;
+        }
+
+        $sql = 'DELETE FROM `mitems-dops` WHERE'
+                . '( `name` IN (\'cold_hand\',\'delivery_hand\',\'hot_hand\') '
+                . ' AND '
+                . '( ' . $sql2 . ' )';
+        // \f\pa($sql);
+        // \f\pa($sql_in);
+        $ff = $db->prepare($sql);
+        $ff->execute($sql_in);
+
+        return \f\end3('удалили с ' . $date_start . ' по ' . $date_finish, true);
     }
 
     /**
