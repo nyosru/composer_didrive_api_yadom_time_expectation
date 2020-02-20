@@ -208,12 +208,12 @@ try {
                 unset($ar['id']);
             }
 
-            if ($res_ar['data'][$now_date] != $ar) {
+            if ($res_ar['data'][$now_date] != $ar || isset($_REQUEST['delete_old']) ) {
 
                 $clear_id_timeo[$now_id] = 1;
 
                 if (isset($_REQUEST['show']))
-                    echo '#' . __LINE__ . ' (' . $sps[$v['sale_point']]['head'] . ') значения за ' . $now_date . ' не сходятся, запишем новые значения';
+                    echo '<br/>#' . __LINE__ . ' (' . $sps[$v['sale_point']]['head'] . ') значения за ' . $now_date . ' не сходятся, запишем новые значения';
 
                 $ss = [
                     'date' => $now_date,
@@ -278,14 +278,14 @@ try {
         }
 
         if (isset($_REQUEST['show'])) {
-            echo 'обновили дней:' . sizeof($new_db);
-            \f\pa($new_db, 2, '', '$new_db');
+            echo '<br/>обновили дней:' . sizeof($new_db);
+            //\f\pa($new_db, 2, '', '$new_db');
         }
 
         \Nyos\mod\items::addNewSimples($db, \Nyos\mod\JobDesc::$mod_timeo, $new_db);
     } else {
         if( isset($_REQUEST['show']) )
-        echo 'всё норм, ничего не добавили, не обновили';
+        echo '<br/>всё норм, ничего не добавили, не обновили';
     }
 
 
