@@ -2,7 +2,8 @@ $(document).ready(function () { // вся мaгия пoслe зaгрузки с�
 
 //alert('123');
 
-    $('body').on('click', '.yadom_time_expectation__get_timeo_for_sp', function (event) {
+    //$('body').on('click', '.yadom_time_expectation__get_timeo_for_sp', function (event) {
+    $(document).on('click', '.yadom_time_expectation__get_timeo_for_sp', function (event) {
 
         // alert('2323');
 //        $(this).removeClass("show_job_tab");

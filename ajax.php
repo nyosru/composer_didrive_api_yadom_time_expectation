@@ -3,7 +3,9 @@
 ini_set('display_errors', 'On'); // сообщения с ошибками будут показываться
 error_reporting(E_ALL); // E_ALL - отображаем ВСЕ ошибки
 
-if ($_SERVER['HTTP_HOST'] == 'photo.uralweb.info' || $_SERVER['HTTP_HOST'] == 'yapdomik.uralweb.info' || $_SERVER['HTTP_HOST'] == 'a2.uralweb.info' || $_SERVER['HTTP_HOST'] == 'adomik.uralweb.info'
+if ($_SERVER['HTTP_HOST'] == 'photo.uralweb.info' || $_SERVER['HTTP_HOST'] == 'yapdomik.uralweb.info' || $_SERVER['HTTP_HOST'] == 'a2.uralweb.info' 
+        || $_SERVER['HTTP_HOST'] == 'adomik.uralweb.info'
+        || $_SERVER['HTTP_HOST'] == 'adomik.dev.uralweb.info'
 ) {
     date_default_timezone_set("Asia/Omsk");
 } else {
@@ -159,7 +161,9 @@ try {
     //
     elseif (isset($_REQUEST['action']) && $_REQUEST['action'] == 'remove_hand_time_edit') {
 
-        if (!empty($_REQUEST['sp']) && !empty($_REQUEST['s']) && !empty($_REQUEST['date_month']) && \Nyos\Nyos::checkSecret($_REQUEST['s'], $_REQUEST['sp'] . $_REQUEST['date_month']) === true) {
+        //if ( isset($_REQUEST['sp']{0}) && !empty($_REQUEST['s']) && !empty($_REQUEST['date_month']) && \Nyos\Nyos::checkSecret($_REQUEST['s'], $_REQUEST['sp'] . $_REQUEST['date_month']) !== false ) {
+        // if ( 1 == 1 ) {
+        if( isset($_REQUEST['sp']{0}) && !empty($_REQUEST['s']) && !empty($_REQUEST['date_month']) && \Nyos\Nyos::checkSecret($_REQUEST['s'], $_REQUEST['sp'] . $_REQUEST['date_month'])) {
 
             ob_start('ob_gzhandler');
 
@@ -170,8 +174,9 @@ try {
             ob_end_clean();
 
             \f\end2($res['html'] . ( $r ?? '' ), true);
-            
+
         } else {
+
             \f\end2('что то пошло не так #' . __LINE__, false, $_REQUEST);
         }
     }

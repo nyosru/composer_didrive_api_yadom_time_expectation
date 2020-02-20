@@ -226,6 +226,7 @@ class JobExpectation {
                 . ' AND mid.name = \'date\' '
                 . ' AND mid.value_date >= :ds '
                 . ' AND mid.value_date <= :df '
+                
                 . ' INNER JOIN `mitems-dops` mid2 '
                 . ' ON mid2.id_item = mi.id '
                 . ' AND mid2.name = \'sale_point\' '
@@ -234,9 +235,10 @@ class JobExpectation {
         \Nyos\mod\items::$var_ar_for_1sql[':sp'] = $sp;
         \Nyos\mod\items::$var_ar_for_1sql[':ds'] = $date_start;
         \Nyos\mod\items::$var_ar_for_1sql[':df'] = $date_finish;
+        
         \Nyos\mod\items::$return_items_header = true;
         $timeo = \Nyos\mod\items::get($db, \Nyos\mod\JobDesc::$mod_timeo);
-        //\f\pa($timeo);
+//        \f\pa($timeo);
 
         $sql2 = '';
         $n = 1;
@@ -248,11 +250,13 @@ class JobExpectation {
         }
 
         $sql = 'DELETE FROM `mitems-dops` WHERE'
-                . '( `name` IN (\'cold_hand\',\'delivery_hand\',\'hot_hand\') '
+                . ' `name` IN (\'cold_hand\',\'delivery_hand\',\'hot_hand\') '
                 . ' AND '
                 . '( ' . $sql2 . ' )';
-        // \f\pa($sql);
-        // \f\pa($sql_in);
+//         \f\pa($sql);
+//         \f\pa($sql_in);
+//         die();
+         
         $ff = $db->prepare($sql);
         $ff->execute($sql_in);
 
