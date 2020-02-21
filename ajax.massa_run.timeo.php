@@ -37,7 +37,6 @@ try {
 
     $msg = 'грузим время ожидания';
 
-
     foreach ($sps as $k => $v) {
 
         // \f\pa($v);
@@ -95,12 +94,13 @@ try {
             }
 
             $ee = \f\timer_stop(3, 'ar');
-            \f\pa($ee);
+            // \f\pa($ee);
 
             \f\Cash::setVar($temp_var, 123, 60 * 60);
 
             if ($ee['sec'] > 25)
                 break;
+
         }
     }
 
