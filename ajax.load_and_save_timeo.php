@@ -202,10 +202,10 @@ try {
             }
             // \f\pa($res_ar['data'][$now_date], '', '', '$res_ar');
 
-            if( !isset($indb__sp_date_ceh_time[$v['sale_point']][$now_date]) )
-                continue;
+//            if( !isset($indb__sp_date_ceh_time[$v['sale_point']][$now_date]) )
+//                continue;
             
-            $ar = $indb__sp_date_ceh_time[$v['sale_point']][$now_date];
+            $ar = $indb__sp_date_ceh_time[$v['sale_point']][$now_date] ?? [];
 
             if (isset($ar['id'])) {
                 $now_id = $ar['id'];
@@ -266,8 +266,9 @@ try {
         }
     }
 
+    \f\pa($new_db,'','','$new_db0');
 
-    if (!empty($new_db)) {
+    if ( !empty($new_db) ) {
 
         // стираем все даты+сп что пишем по новой
         if (1 == 1) {
@@ -286,7 +287,10 @@ try {
             //\f\pa($new_db, 2, '', '$new_db');
         }
 
-        \Nyos\mod\items::addNewSimples($db, \Nyos\mod\JobDesc::$mod_timeo, $new_db);
+        \f\pa($new_db,'','','$new_db');
+        $we = \Nyos\mod\items::addNewSimples($db, \Nyos\mod\JobDesc::$mod_timeo, $new_db);
+        \f\pa($we,'','','$we');
+        
     } else {
         if (isset($_REQUEST['show']))
             echo '<br/>всё норм, ничего не добавили, не обновили';
@@ -384,7 +388,7 @@ try {
         ,
         'in_db' => sizeof($new_db ?? [])
         ,
-        'new' => $new_db
+        'new' => ( $new_db ?? [] )
         ]);
 }
 //
