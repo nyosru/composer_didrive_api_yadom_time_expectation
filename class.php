@@ -158,7 +158,7 @@ class JobExpectation {
             \f\timer_start(7);
 
         // если нет переменной то не пишем кеш
-        $cash_var = 'JobExpectation__getTimerExpectation_' . \Nyos\mod\JobDesc::$mod_timeo . '_ds' . $date_start . '_df' . $date_fin;
+        $cash_var = 'JobExpectation__getTimerExpectation_' . \Nyos\mod\JobDesc::$mod_timeo . '_sp'.$sp_id.'_ds' . $date_start . '_df' . $date_fin;
         // $cash_time_sec = 60 * 2;
 
         $return = [];
