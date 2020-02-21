@@ -149,6 +149,7 @@ try {
 //            \f\pa($ar__sp_date_time, 2, '', '$ar__sp_date_time');
 //        }
 
+
         \Nyos\mod\items::$join_where = ' INNER JOIN `mitems-dops` mid '
                 . ' ON mid.id_item = mi.id '
                 . ' AND mid.name = \'date\' '
@@ -201,6 +202,9 @@ try {
             }
             // \f\pa($res_ar['data'][$now_date], '', '', '$res_ar');
 
+            if( !isset($indb__sp_date_ceh_time[$v['sale_point']][$now_date]) )
+                continue;
+            
             $ar = $indb__sp_date_ceh_time[$v['sale_point']][$now_date];
 
             if (isset($ar['id'])) {
@@ -208,7 +212,7 @@ try {
                 unset($ar['id']);
             }
 
-            if ($res_ar['data'][$now_date] != $ar || isset($_REQUEST['delete_old']) ) {
+            if ($res_ar['data'][$now_date] != $ar || isset($_REQUEST['delete_old'])) {
 
                 $clear_id_timeo[$now_id] = 1;
 
@@ -284,8 +288,8 @@ try {
 
         \Nyos\mod\items::addNewSimples($db, \Nyos\mod\JobDesc::$mod_timeo, $new_db);
     } else {
-        if( isset($_REQUEST['show']) )
-        echo '<br/>всё норм, ничего не добавили, не обновили';
+        if (isset($_REQUEST['show']))
+            echo '<br/>всё норм, ничего не добавили, не обновили';
     }
 
 
@@ -348,7 +352,8 @@ try {
         \Nyos\mod\items::saveNewDop($db, $edit_dops);
     }
 
-    if (1 == 1 && class_exists('\\Nyos\\Msg')) {
+
+    if ( 1 == 1 && !isset($_REQUEST['skip_send_msg']) && class_exists('\\Nyos\\Msg') ) {
 
         $e = 'Время ожидания'
                 . PHP_EOL
@@ -372,9 +377,15 @@ try {
     ob_end_clean();
 
     // чистим кеш
-    \f\Cash::deleteKeyPoFilter(['time_expectations', 'ds' . $date_start]);
+    \f\Cash::deleteKeyPoFilter(['time_expectations', 'ds' . $date_start] );
 
-    \f\end2('ok' . $r, true, ['load_kolvo' => sizeof($new_db ?? []), 'in_db' => sizeof($new_db ?? [])]);
+    \f\end2('ok' . $r, true, [
+        'load_kolvo' => sizeof($new_db ?? [])
+        ,
+        'in_db' => sizeof($new_db ?? [])
+        ,
+        'new' => $new_db
+        ]);
 }
 //
 catch (\Exception $ex) {
@@ -387,7 +398,7 @@ catch (\Exception $ex) {
             . '</pre>';
 
     if (class_exists('\nyos\Msg'))
-        \nyos\Msg::sendTelegramm($e, null, 1);
+        \nyos\Msg::sendTelegramm($e, null, 2);
 
     // die( \f\end2( $e, false ) );
     die(\f\end2('Произошла неописуемая ситуация #' . __LINE__, false));
