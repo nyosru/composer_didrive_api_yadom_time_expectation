@@ -63,11 +63,10 @@ try {
                 // 'delete_old' => 'da',
                 // пропустить отправку сообщения
                 'skip_send_msg' => 'da',
-                'date' => date('Y-m-d')
+                'date' => ( !empty( $_REQUEST['scan_date'] ) ? date('Y-m-d', strtotime($_REQUEST['scan_date']) ) : date('Y-m-d') )
             ];
 
             // echo '<br/>+++'.$sps[$v['id']]['head'];
-
             $link = 'http://' . $_SERVER['HTTP_HOST'] . '/vendor/didrive_api/yadom_time_expectation/ajax.load_and_save_timeo.php?' . http_build_query($u);
 
 // action=calc_mont_sp&sp=3051&2return=html-small';

@@ -21,7 +21,6 @@ header("Expires: " . date("r"));
 require $_SERVER['DOCUMENT_ROOT'] . '/vendor/autoload.php';
 require( $_SERVER['DOCUMENT_ROOT'] . '/all/ajax.start.php' );
 
-
 foreach (\Nyos\Nyos::$menu as $k => $v) {
     if (isset($v['type_api']) && $v['type_api'] == 'time_expectation') {
 
@@ -56,13 +55,12 @@ try {
     // \f\pa($_REQUEST, '', '', '$_REQUEST');
 
     $date_start = date('Y-m-01', strtotime($_REQUEST['date']));
+    \f\pa($date_start, '', '', 'date_start');
+
     $date_finish = date('Y-m-d', strtotime($date_start . ' +1 month -1 day'));
 
     // чистим кеш
     \f\Cash::deleteKeyPoFilter(['time_expectations', 'ds' . $date_start]);
-
-
-
 
     $sps = \Nyos\mod\items::get($db, \Nyos\mod\JobDesc::$mod_sale_point);
     $sps_link_timeo = \Nyos\mod\items::get($db, \Nyos\mod\JobDesc::$mod_sp_link_timeo);
@@ -118,14 +116,28 @@ try {
 
         $q = ['sp' => $link_sp_timeosp[$v['id']],
             // 'date' => '2020-02-01',
-            'date' => date('Y-m-d'),
-            's' => md5($link_sp_timeosp[$v['id']] . 'time' . date('Y-m-d'))
+            'date' => $date_start,
+            's' => md5($link_sp_timeosp[$v['id']] . 'time' . $date_start)
         ];
 
         $uri = 'http://time-exp.uralweb.info/api.php?' . http_build_query($q);
         // \f\pa($uri,'','','uri');
-        $res_ar = json_decode(file_get_contents($uri), true);
-        // \f\pa($res_ar, 2, '', 'res_ar');
+        $res_ar0 = json_decode(file_get_contents($uri), true);
+        // \f\pa($res_ar0, 2, '', 'данные с дата сервера res_ar0');
+        $res_ar = [];
+        foreach ($res_ar0['data'] as $k3 => $v3) {
+
+            if (!isset($v3['hot']))
+                $v3['hot'] = 0;
+            if (!isset($v3['cold']))
+                $v3['cold'] = 0;
+            if (!isset($v3['delivery']))
+                $v3['delivery'] = 0;
+
+            $res_ar['data'][$k3] = $v3;
+        }
+        \f\pa($res_ar, 2, '', 'данные с дата сервера res_ar');
+        // die;
 
         if (isset($_REQUEST['show']) && $_REQUEST['show'] == 'table') {
             if (isset($res_ar['data'])) {
@@ -150,6 +162,9 @@ try {
 //        }
 
 
+
+
+
         \Nyos\mod\items::$join_where = ' INNER JOIN `mitems-dops` mid '
                 . ' ON mid.id_item = mi.id '
                 . ' AND mid.name = \'date\' '
@@ -166,17 +181,194 @@ try {
 
         $timeo = \Nyos\mod\items::get($db, \Nyos\mod\JobDesc::$mod_timeo);
         // \f\pa($timeo, 2, '', '$timeo в базе');
+//        $timeo0 = [];
+//
+//        foreach ($timeo as $k5 => $v5) {
+//            $timeo0[$v5['date']] = $v5;
+//        }
+//        \f\pa($timeo0, 2, '', '$timeo0 в базе');
 
-        $indb__sp_date_ceh_time = [];
+        $time_in_db = [];
+
+        /**
+         * массив дат которые стираем и пишем новое значение
+         */
+        $clear_date = [];
+
         foreach ($timeo as $k => $v) {
 
-            $indb__sp_date_ceh_time[$v['sale_point']][$v['date']]['id'] = $v['id'];
+            if (isset($ntime[$v['date']]))
+                $clear_date[$v['date']] = 1;
 
-            foreach ($type as $type1) {
-                if (isset($v[$type1]))
-                    $indb__sp_date_ceh_time[$v['sale_point']][$v['date']][$type1] = $v[$type1];
+            $time_in_db[$v['date']] = $v;
+        }
+
+        if (isset($_REQUEST['show']) && $_REQUEST['show'] == 'table') {
+            \f\pa($time_in_db, 2, '', 'время из базы $time_in_db');
+            \f\pa($clear_date, 2, '', 'трём даты так как две записи');
+        }
+
+        /**
+         * массив допоов которые трём перед добавлением
+         */
+        $ar_clear_dops = [];
+
+        /**
+         * добавляем данные
+         */
+        $ar_adds = [];
+
+        $add_d = [];
+
+        for ($n = 0; $n <= 32; $n++) {
+
+            $now_date = date('Y-m-d', strtotime($date_start . ' +' . $n . ' day'));
+
+            if ($now_date > $date_finish)
+                break;
+
+            if ($now_date >= $now_real_date)
+                break;
+
+            echo '<br/>date - ' . $now_date;
+
+            if (isset($clear_date[$now_date])) {
+                echo '<br/>эту дату трем ' . $now_date;
+                $ar_clear_dops[] = ['sale_point' => $_REQUEST['sp'], 'date' => $now_date];
+            }
+
+//            if (isset($time_in_db[$now_date]))
+//                \f\pa($time_in_db[$now_date], '', '');
+//            if (isset($res_ar['data'][$now_date]))
+//                \f\pa($res_ar['data'][$now_date], '', '');
+
+
+            if (isset($res_ar['data'][$now_date]) && !isset($time_in_db[$now_date])) {
+                echo '<br/>записываем новые данные';
+
+                if (isset($_REQUEST['show']) && $_REQUEST['show'] == 'table') {
+
+                    echo '<table class=table ><tr><td>';
+                    \f\pa(( $time_in_db[$now_date] ?? []), '', '');
+                    echo '</td><td>';
+                    \f\pa(( $res_ar['data'][$now_date] ?? []), '', '');
+                    echo '</td></tr></table>';
+                }
+
+                $ar_adds[] = [
+                    'date' => $now_date,
+                    'sale_point' => $_REQUEST['sp'],
+                    'cold' => $res_ar['data'][$now_date]['cold']
+                    , 'hot' => $res_ar['data'][$now_date]['hot']
+                    , 'delivery' => $res_ar['data'][$now_date]['delivery']
+                ];
+            } elseif (
+                    isset($res_ar['data'][$now_date]) && isset($time_in_db[$now_date]) && (
+                    $res_ar['data'][$now_date]['cold'] != $time_in_db[$now_date]['cold'] || $res_ar['data'][$now_date]['hot'] != $time_in_db[$now_date]['hot'] || $res_ar['data'][$now_date]['delivery'] != $time_in_db[$now_date]['delivery']
+                    )
+            ) {
+                echo '<br/>данные есть и не сходятся';
+
+                if (isset($_REQUEST['show']) && $_REQUEST['show'] == 'table') {
+                    echo '<table class=table ><tr><td>';
+                    \f\pa(( $time_in_db[$now_date] ?? []), '', '');
+                    echo '</td><td>';
+                    \f\pa(( $res_ar['data'][$now_date] ?? []), '', '');
+                    echo '</td></tr></table>';
+                }
+
+                $ar_clear_dops[] = ['sale_point' => $_REQUEST['sp'], 'date' => $now_date];
+
+//                $ar_adds[] = [
+//                    'date' => $now_date,
+//                    'sale_point' => $_REQUEST['sp'],
+//                    'cold' => $res_ar['data'][$now_date]['cold']
+//                    , 'hot' => $res_ar['data'][$now_date]['hot']
+//                    , 'delivery' => $res_ar['data'][$now_date]['delivery']
+//                ];
+
+            } 
+            else 
+            {
+                echo '<br/>всё норм';
+            }
+            
+            continue;
+
+
+
+
+
+
+
+
+            $check_data_date = false;
+
+            foreach ($timeo as $k1 => $v1) {
+                if ($v1['date'] == $now_date) {
+
+                    $check_data_date = true;
+                    echo '<br/><hr><hr>уже есть';
+
+                    \f\pa($v1, '', '', 'что в базе');
+                    \f\pa($res_ar['data'][$now_date], '', '', 'что загрузили с сервера');
+
+                    if (
+                            ( ( $v1['cold'] ?? 0 ) != ( $res_ar['data'][$now_date]['cold'] ?? 0 ) ) ||
+                            ( ( $v1['hot'] ?? 0 ) != ( $res_ar['data'][$now_date]['hot'] ?? 0 ) ) ||
+                            ( ( $v1['delivery'] ?? 0 ) != ( $res_ar['data'][$now_date]['delivery'] ?? 0 ) )
+                    ) {
+
+                        echo '<br/>пишем данные, расходятся';
+
+                        $ar_adds[] = [
+                            'date' => $now_date,
+                            'info' => 'данные не сходятся',
+                            'sale_point' => $_REQUEST['sp'],
+                            'cold' => ( $v1['cold'] ?? 0 )
+                            , 'hot' => ( $v1['hot'] ?? 0 )
+                            , 'delivery' => ( $v1['delivery'] ?? 0 )
+                        ];
+                    }
+
+                    continue;
+                }
+            }
+
+            if (!empty($res_ar['data'][$now_date]['cold']) || !empty($res_ar['data'][$now_date]['hot']) || !empty($res_ar['data'][$now_date]['delivery'])) {
+                if ($check_data_date === false) {
+                    $ar_adds[] = [
+                        'date' => $now_date,
+                        'sale_point' => $_REQUEST['sp'],
+                        'cold' => ( $v1['cold'] ?? 0 )
+                        , 'hot' => ( $v1['hot'] ?? 0 )
+                        , 'delivery' => ( $v1['delivery'] ?? 0 )
+                    ];
+                }
             }
         }
+
+        // \f\pa($clear_date,2,'','$clear_date');
+        \f\pa($ar_adds, 2, '', '$ar_adds');
+        \Nyos\mod\items::addNewSimples($db, \Nyos\mod\JobDesc::$mod_timeo, $ar_adds);
+
+        \f\pa($ar_clear_dops, 2, '', '$ar_clear_dops');
+        \Nyos\mod\items::deleteFromDopsMany($db, \Nyos\mod\JobDesc::$mod_timeo, $ar_clear_dops);
+
+        \f\Cash::deleteKeyPoFilter([\Nyos\mod\JobDesc::$mod_timeo]);
+
+//        die();
+//
+//        $indb__sp_date_ceh_time = [];
+//        foreach ($timeo as $k => $v) {
+//
+//            $indb__sp_date_ceh_time[$v['sale_point']][$v['date']]['id'] = $v['id'];
+//
+//            foreach ($type as $type1) {
+//                if (isset($v[$type1]))
+//                    $indb__sp_date_ceh_time[$v['sale_point']][$v['date']][$type1] = $v[$type1];
+//            }
+//        }
 
 //        \f\pa($indb__sp_date_ceh_time, 2, '', '$indb__sp_date_ceh_time');
 //
@@ -185,6 +377,7 @@ try {
 //            
 //        }
 
+        if( 1 == 2 )
         for ($n = 0; $n <= 32; $n++) {
 
             $now_date = date('Y-m-d', strtotime($date_start . ' +' . $n . ' day'));
@@ -201,10 +394,9 @@ try {
                 }
             }
             // \f\pa($res_ar['data'][$now_date], '', '', '$res_ar');
-
 //            if( !isset($indb__sp_date_ceh_time[$v['sale_point']][$now_date]) )
 //                continue;
-            
+
             $ar = $indb__sp_date_ceh_time[$v['sale_point']][$now_date] ?? [];
 
             if (isset($ar['id'])) {
@@ -266,9 +458,9 @@ try {
         }
     }
 
-    \f\pa($new_db,'','','$new_db0');
+    //\f\pa($new_db,'','','$new_db0');
 
-    if ( !empty($new_db) ) {
+    if (!empty($new_db)) {
 
         // стираем все даты+сп что пишем по новой
         if (1 == 1) {
@@ -278,8 +470,9 @@ try {
                 $datas[] = ['sale_point' => $v['sale_point'], 'date' => $v['date']];
             }
 
-            if (!empty($datas))
-                \Nyos\mod\items::deleteItems2($db, \Nyos\mod\JobDesc::$mod_timeo, $datas);
+            if (!empty($datas)) {
+                \Nyos\mod\items::deleteFromDopsMany($db, \Nyos\mod\JobDesc::$mod_timeo, $datas);
+            }
         }
 
         if (isset($_REQUEST['show'])) {
@@ -287,10 +480,9 @@ try {
             //\f\pa($new_db, 2, '', '$new_db');
         }
 
-        \f\pa($new_db,'','','$new_db');
+        // \f\pa($new_db,'','','$new_db');
         $we = \Nyos\mod\items::addNewSimples($db, \Nyos\mod\JobDesc::$mod_timeo, $new_db);
-        \f\pa($we,'','','$we');
-        
+        // \f\pa($we,'','','$we');
     } else {
         if (isset($_REQUEST['show']))
             echo '<br/>всё норм, ничего не добавили, не обновили';
@@ -357,7 +549,7 @@ try {
     }
 
 
-    if ( 1 == 1 && !isset($_REQUEST['skip_send_msg']) && class_exists('\\Nyos\\Msg') ) {
+    if (1 == 1 && !isset($_REQUEST['skip_send_msg']) && class_exists('\\Nyos\\Msg')) {
 
         $e = 'Время ожидания'
                 . PHP_EOL
@@ -381,15 +573,18 @@ try {
     ob_end_clean();
 
     // чистим кеш
-    \f\Cash::deleteKeyPoFilter(['time_expectations', 'ds' . $date_start] );
+    \f\Cash::deleteKeyPoFilter(['time_expectations', 'ds' . $date_start]);
 
-    \f\end2('ok' . $r, true, [
+    if (isset($_REQUEST['show']))
+        echo $r;
+    
+    \f\end2( 'ok' . ( $r ?? '--' ), true, [
         'load_kolvo' => sizeof($new_db ?? [])
         ,
         'in_db' => sizeof($new_db ?? [])
         ,
         'new' => ( $new_db ?? [] )
-        ]);
+    ]);
 }
 //
 catch (\Exception $ex) {
