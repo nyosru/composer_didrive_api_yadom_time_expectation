@@ -151,17 +151,42 @@ class JobExpectation {
      */
     public static function getTimerExpectation($db, int $sp_id, $date_start, $date_fin) {
 
+        
+        \f\timer_start(71);
+        
+        \Nyos\mod\items::$search = [ 'sale_point' => $sp_id ];
+        
+        \Nyos\mod\items::$between_date = [ 'date' => [$date_start,$date_fin] ];
+        \Nyos\mod\items::$cancel_cash = true;
+        \Nyos\mod\items::$timer_show = true;
+        $re = \Nyos\mod\items::get($db, \Nyos\mod\JobDesc::$mod_timeo);
+        // \f\pa($re,2);
+        $return = [];
+        foreach( $re as $k => $v ){
+            if( !empty($v['date']) )
+            $return[$v['date']] = $v;
+        }
+        // unset($re);
+        // echo \f\timer_stop(71);
+        return $return;
+        
+        
+        
+        
         //echo '<br/>== ' . $sp_id . ' , ' . $date_start . ' , ' . $date_fin;
-        // $show_timer = true;
+//        if ( $sp_id == 2153 )
+        //$show_timer = true;
 
         if (isset($show_timer) && $show_timer === true)
             \f\timer_start(7);
+        
+            \f\timer_start(7);
 
         // если нет переменной то не пишем кеш
-        $cash_var = 'JobExpectation__getTimerExpectation_' . \Nyos\mod\JobDesc::$mod_timeo . '_sp'.$sp_id.'_ds' . $date_start . '_df' . $date_fin;
-        // $cash_time_sec = 60 * 2;
+        $cash_var = 'JobExpectation__getTimerExpectation_' . \Nyos\mod\JobDesc::$mod_timeo . '_sp' . $sp_id . '_ds' . $date_start . '_df' . $date_fin;
+        $cash_time_sec = 60 * 60 * 8;
 
-        $return = [];
+        $return = false;
 
         if (isset($show_timer) && $show_timer === true)
             echo '<br/>#' . __LINE__ . ' var ' . ( $cash_var ?? '-' ) . ' t ' . ($cash_time_sec ?? '-');
@@ -169,9 +194,11 @@ class JobExpectation {
         if (!empty($cash_var))
             $return = \f\Cash::getVar($cash_var);
 
-        if (!empty($return)) {
+        if ( $return !== false ) {
+            
             if (isset($show_timer) && $show_timer === true)
                 echo '<br/>#' . __LINE__ . ' тащим данные из кеша';
+            
         } else {
 
             if (isset($show_timer) && $show_timer === true)
@@ -181,8 +208,10 @@ class JobExpectation {
                 md1.id_item = mi.id 
                 AND md1.name = \'date\' 
                 AND md1.value_date >= :ds 
-                AND md1.value_date <= :df 
-                    INNER JOIN `mitems-dops` md2 ON 
+                AND md1.value_date <= :df
+                '
+//                ;
+                    . '   INNER JOIN `mitems-dops` md2 ON 
                     md2.id_item = mi.id 
                     AND md2.name = \'sale_point\' 
                     AND md2.value = :sp 
@@ -193,18 +222,39 @@ class JobExpectation {
                 ':df' => date('Y-m-d', strtotime($date_fin))
             ];
 
+            if (isset($show_timer) && $show_timer === true)
+                $ret = \Nyos\mod\items::$show_sql = true;
+
             $ret = \Nyos\mod\items::get($db, \Nyos\mod\JobDesc::$mod_timeo);
+
+            if (isset($show_timer) && $show_timer === true)
+                \f\pa($ret, 2, '', 'ret');
+            
+                // \f\pa($ret, 2, '', 'ret');
 
             $return = [];
             foreach ($ret as $k => $v) {
+
+//                if (isset($show_timer) && $show_timer === true)
+//                    \f\pa($v, 2, '', 'v');
+
+                if ($v['cold'] == 0 && $v['hot'] == 0 && $v['delivery'] == 0)
+                    continue;
+
                 $return[$v['date']] = $v;
             }
 
-            if (!empty($return))
+            if (isset($show_timer) && $show_timer === true)
+                \f\pa($return, 2, '', 'return');
+
+            if (!empty($return) && !empty($cash_var) )
                 \f\Cash::setVar($cash_var, $return, ( $cash_time_sec ?? 0));
+            
         }
 
         if (isset($show_timer) && $show_timer === true)
+            echo '<br/>#' . __LINE__ . ' ' . \f\timer_stop(7);
+        
             echo '<br/>#' . __LINE__ . ' ' . \f\timer_stop(7);
 
         return $return;
@@ -226,7 +276,6 @@ class JobExpectation {
                 . ' AND mid.name = \'date\' '
                 . ' AND mid.value_date >= :ds '
                 . ' AND mid.value_date <= :df '
-                
                 . ' INNER JOIN `mitems-dops` mid2 '
                 . ' ON mid2.id_item = mi.id '
                 . ' AND mid2.name = \'sale_point\' '
@@ -235,7 +284,7 @@ class JobExpectation {
         \Nyos\mod\items::$var_ar_for_1sql[':sp'] = $sp;
         \Nyos\mod\items::$var_ar_for_1sql[':ds'] = $date_start;
         \Nyos\mod\items::$var_ar_for_1sql[':df'] = $date_finish;
-        
+
         \Nyos\mod\items::$return_items_header = true;
         $timeo = \Nyos\mod\items::get($db, \Nyos\mod\JobDesc::$mod_timeo);
 //        \f\pa($timeo);
@@ -256,7 +305,7 @@ class JobExpectation {
 //         \f\pa($sql);
 //         \f\pa($sql_in);
 //         die();
-         
+
         $ff = $db->prepare($sql);
         $ff->execute($sql_in);
 
