@@ -36,9 +36,10 @@ if (isset($skip_start) && $skip_start === true) {
 
 try {
 
-    $sps = \Nyos\mod\items::get($db, \Nyos\mod\JobDesc::$mod_sale_point);
-                        if( strpos($_SERVER['HTTP_HOST'],'dev') !== false )
-    \f\pa($sps, 2, '', '$sps');
+    $sps = \Nyos\mod\items::get($db, \Nyos\mod\JobDesc::$mod_sale_point, 'show', 'id_id' );
+
+    if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
+        \f\pa($sps, 2, '', '$sps');
 
 //    if (1 == 2) {
 ////    ob_start('ob_gzhandler');
