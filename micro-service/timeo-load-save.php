@@ -68,7 +68,8 @@ try {
     // \f\pa($_REQUEST, '', '', '$_REQUEST');
 
     $date_start = date('Y-m-01', strtotime($_REQUEST['date']));
-    \f\pa($date_start, '', '', 'date_start');
+    if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
+        \f\pa($date_start, '', '', 'date_start');
 
     $date_finish = date('Y-m-d', strtotime($date_start . ' +1 month -1 day'));
 
@@ -149,7 +150,8 @@ try {
 
             $res_ar['data'][$k3] = $v3;
         }
-        \f\pa($res_ar, 2, '', 'данные с дата сервера res_ar');
+        if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
+            \f\pa($res_ar, 2, '', 'данные с дата сервера res_ar');
         // die;
 
         if (isset($_REQUEST['show']) && $_REQUEST['show'] == 'table') {
@@ -173,11 +175,6 @@ try {
 //            \f\pa($link_sp_timeosp, 2, '', '$link_sp_timeosp');
 //            \f\pa($ar__sp_date_time, 2, '', '$ar__sp_date_time');
 //        }
-
-
-
-
-
 //        \Nyos\mod\items::$join_where = ' INNER JOIN `mitems-dops` mid '
 //                . ' ON mid.id_item = mi.id '
 //                . ' AND mid.name = \'date\' '
@@ -192,13 +189,14 @@ try {
 //        \Nyos\mod\items::$var_ar_for_1sql[':d2'] = $date_finish;
 //        \Nyos\mod\items::$var_ar_for_1sql[':sp'] = $_REQUEST['sp'];
 
-        
-        
-        \Nyos\mod\items::$between['date'] = [ $date_start, $date_finish ];
+
+
+        \Nyos\mod\items::$between['date'] = [$date_start, $date_finish];
         \Nyos\mod\items::$search['sale_point'] = $_REQUEST['sp'];
         $timeo = \Nyos\mod\items::get($db, \Nyos\mod\JobDesc::$mod_timeo);
-        
-        \f\pa($timeo, 2, '', '$timeo в базе');
+
+        if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
+            \f\pa($timeo, 2, '', '$timeo в базе');
 //        $timeo0 = [];
 //
 //        foreach ($timeo as $k5 => $v5) {
@@ -248,10 +246,12 @@ try {
             if ($now_date >= $now_real_date)
                 break;
 
-            echo '<br/>date - ' . $now_date;
+            if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
+                echo '<br/>date - ' . $now_date;
 
             if (isset($clear_date[$now_date])) {
-                echo '<br/>эту дату трем ' . $now_date;
+                if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
+                    echo '<br/>эту дату трем ' . $now_date;
                 $ar_clear_dops[] = ['sale_point' => $_REQUEST['sp'], 'date' => $now_date];
             }
 
@@ -262,7 +262,8 @@ try {
 
 
             if (isset($res_ar['data'][$now_date]) && !isset($time_in_db[$now_date])) {
-                echo '<br/>записываем новые данные';
+                if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
+                    echo '<br/>записываем новые данные';
 
                 if (isset($_REQUEST['show']) && $_REQUEST['show'] == 'table') {
 
@@ -285,7 +286,8 @@ try {
                     $res_ar['data'][$now_date]['cold'] != $time_in_db[$now_date]['cold'] || $res_ar['data'][$now_date]['hot'] != $time_in_db[$now_date]['hot'] || $res_ar['data'][$now_date]['delivery'] != $time_in_db[$now_date]['delivery']
                     )
             ) {
-                echo '<br/>данные есть и не сходятся';
+                if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
+                    echo '<br/>данные есть и не сходятся';
 
                 if (isset($_REQUEST['show']) && $_REQUEST['show'] == 'table') {
                     echo '<table class=table ><tr><td>';
@@ -304,13 +306,10 @@ try {
 //                    , 'hot' => $res_ar['data'][$now_date]['hot']
 //                    , 'delivery' => $res_ar['data'][$now_date]['delivery']
 //                ];
-
-            } 
-            else 
-            {
+            } else {
                 echo '<br/>всё норм';
             }
-            
+
             continue;
 
 
@@ -326,10 +325,14 @@ try {
                 if ($v1['date'] == $now_date) {
 
                     $check_data_date = true;
-                    echo '<br/><hr><hr>уже есть';
 
-                    \f\pa($v1, '', '', 'что в базе');
-                    \f\pa($res_ar['data'][$now_date], '', '', 'что загрузили с сервера');
+                    if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
+                        echo '<br/><hr><hr>уже есть';
+
+                    if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false) {
+                        \f\pa($v1, '', '', 'что в базе');
+                        \f\pa($res_ar['data'][$now_date], '', '', 'что загрузили с сервера');
+                    }
 
                     if (
                             ( ( $v1['cold'] ?? 0 ) != ( $res_ar['data'][$now_date]['cold'] ?? 0 ) ) ||
@@ -367,9 +370,14 @@ try {
         }
 
         // \f\pa($clear_date,2,'','$clear_date');
-        \f\pa($ar_adds, 2, '', '$ar_adds');
+
+        if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
+            \f\pa($ar_adds, 2, '', '$ar_adds');
+
         // \Nyos\mod\items::addNewSimples($db, \Nyos\mod\JobDesc::$mod_timeo, $ar_adds);
-        \Nyos\mod\items::adds($db, \Nyos\mod\JobDesc::$mod_timeo, $ar_adds);
+
+        if (!empty($ar_adds))
+            \Nyos\mod\items::adds($db, \Nyos\mod\JobDesc::$mod_timeo, $ar_adds);
 
         // \f\pa($ar_clear_dops, 2, '', '$ar_clear_dops');
         // \Nyos\mod\items::deleteFromDopsMany($db, \Nyos\mod\JobDesc::$mod_timeo, $ar_clear_dops);
@@ -387,7 +395,6 @@ try {
 //                    $indb__sp_date_ceh_time[$v['sale_point']][$v['date']][$type1] = $v[$type1];
 //            }
 //        }
-
 //        \f\pa($indb__sp_date_ceh_time, 2, '', '$indb__sp_date_ceh_time');
 //
 //        // foreach ($res_ar['data'] as $date => $ar) {
@@ -395,58 +402,58 @@ try {
 //            
 //        }
 
-        if( 1 == 2 )
-        for ($n = 0; $n <= 32; $n++) {
+        if (1 == 2)
+            for ($n = 0; $n <= 32; $n++) {
 
-            $now_date = date('Y-m-d', strtotime($date_start . ' +' . $n . ' day'));
+                $now_date = date('Y-m-d', strtotime($date_start . ' +' . $n . ' day'));
 
-            if ($now_date >= $now_real_date)
-                continue;
+                if ($now_date >= $now_real_date)
+                    continue;
 
-            // \f\pa($now_date);
-            // \f\pa($indb__sp_date_ceh_time[$v['sale_point']][$now_date], '', '', '$indb__sp_date_ceh_time');
+                // \f\pa($now_date);
+                // \f\pa($indb__sp_date_ceh_time[$v['sale_point']][$now_date], '', '', '$indb__sp_date_ceh_time');
 
-            foreach ($type as $type1) {
-                if (!isset($res_ar['data'][$now_date][$type1])) {
-                    $res_ar['data'][$now_date][$type1] = 0;
+                foreach ($type as $type1) {
+                    if (!isset($res_ar['data'][$now_date][$type1])) {
+                        $res_ar['data'][$now_date][$type1] = 0;
+                    }
                 }
-            }
-            // \f\pa($res_ar['data'][$now_date], '', '', '$res_ar');
+                // \f\pa($res_ar['data'][$now_date], '', '', '$res_ar');
 //            if( !isset($indb__sp_date_ceh_time[$v['sale_point']][$now_date]) )
 //                continue;
 
-            $ar = $indb__sp_date_ceh_time[$v['sale_point']][$now_date] ?? [];
+                $ar = $indb__sp_date_ceh_time[$v['sale_point']][$now_date] ?? [];
 
-            if (isset($ar['id'])) {
-                $now_id = $ar['id'];
-                unset($ar['id']);
-            }
-
-            if ($res_ar['data'][$now_date] != $ar || isset($_REQUEST['delete_old'])) {
-
-                $clear_id_timeo[$now_id] = 1;
-
-                if (isset($_REQUEST['show']))
-                    echo '<br/>#' . __LINE__ . ' (' . $sps[$v['sale_point']]['head'] . ') значения за ' . $now_date . ' не сходятся, запишем новые значения';
-
-                $ss = [
-                    'date' => $now_date,
-                    'sale_point' => $v['sale_point'],
-                ];
-
-                foreach ($type as $t) {
-                    $ss[$t] = $res_ar['data'][$now_date][$t] ?? 0;
+                if (isset($ar['id'])) {
+                    $now_id = $ar['id'];
+                    unset($ar['id']);
                 }
 
-                $new_db[] = $ss;
-                continue;
-            }
+                if ($res_ar['data'][$now_date] != $ar || isset($_REQUEST['delete_old'])) {
+
+                    $clear_id_timeo[$now_id] = 1;
+
+                    if (isset($_REQUEST['show']))
+                        echo '<br/>#' . __LINE__ . ' (' . $sps[$v['sale_point']]['head'] . ') значения за ' . $now_date . ' не сходятся, запишем новые значения';
+
+                    $ss = [
+                        'date' => $now_date,
+                        'sale_point' => $v['sale_point'],
+                    ];
+
+                    foreach ($type as $t) {
+                        $ss[$t] = $res_ar['data'][$now_date][$t] ?? 0;
+                    }
+
+                    $new_db[] = $ss;
+                    continue;
+                }
 //            else {
 //                echo '#' . __LINE__ . ' сходится';
 //            }
 //            echo '<hr>';
 //            echo '<hr>';
-        }
+            }
     }
 
 // стираем старые id что заменяем новыми
@@ -494,7 +501,8 @@ try {
         }
 
         if (isset($_REQUEST['show'])) {
-            echo '<br/>обновили дней:' . sizeof($new_db);
+            if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
+                echo '<br/>обновили дней:' . sizeof($new_db);
             //\f\pa($new_db, 2, '', '$new_db');
         }
 
@@ -560,9 +568,11 @@ try {
         }
 
         // новые полные записи
-        \f\pa($new_db, 2, '', '$new_db');
+        if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
+            \f\pa($new_db, 2, '', '$new_db');
         \Nyos\mod\items::addNewSimples($db, \Nyos\mod\JobDesc::$mod_timeo, $new_db);
-        \f\pa($edit_dops, 2, '', '$edit_dops');
+        if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
+            \f\pa($edit_dops, 2, '', '$edit_dops');
         \Nyos\mod\items::saveNewDop($db, $edit_dops);
     }
 
@@ -595,8 +605,8 @@ try {
 
     if (isset($_REQUEST['show']))
         echo $r;
-    
-    \f\end2( 'ok' . ( $r ?? '--' ), true, [
+
+    \f\end2('ok' . ( $r ?? '--' ), true, [
         'load_kolvo' => sizeof($new_db ?? [])
         ,
         'in_db' => sizeof($new_db ?? [])
