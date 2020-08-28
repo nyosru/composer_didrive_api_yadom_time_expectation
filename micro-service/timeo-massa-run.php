@@ -37,6 +37,7 @@ if (isset($skip_start) && $skip_start === true) {
 try {
 
     $sps = \Nyos\mod\items::get($db, \Nyos\mod\JobDesc::$mod_sale_point);
+                        if( strpos($_SERVER['HTTP_HOST'],'dev') !== false )
     \f\pa($sps, 2, '', '$sps');
 
 //    if (1 == 2) {
@@ -75,7 +76,6 @@ try {
 //    \f\pa($sps_link_timeo, 2, '', '$sps_link_timeo');
 //
 //    \f\timer_start(3);
-
 //    
 //
 //if ( !isset($_REQUEST['scan_date']) && round(date('d', strtotime($_SERVER['REQUEST_TIME'])),0) <= 2 ) {
@@ -170,11 +170,15 @@ try {
                 curl_setopt($curl, CURLOPT_HEADER, 0);
                 $result = curl_exec($curl); //выполнение запроса
                 // \f\pa( json_decode($result,true), '', '', 'result');
-                \f\pa($result, '', '', 'result');
+
+                if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
+                    \f\pa($result, '', '', 'result');
 
                 $res = json_decode($result, true);
                 // \f\pa(json_decode($result,true), '', '', 'result2');
-                \f\pa($res, '', '', 'result2');
+
+                if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
+                    \f\pa($res, '', '', 'result2');
 
 
                 foreach ($res['new'] as $q => $w) {
@@ -186,7 +190,8 @@ try {
             }
 
             $ee = \f\timer_stop(3, 'ar');
-            \f\pa($ee);
+            if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
+                \f\pa($ee);
 
             if (!empty($temp_var))
                 \f\Cash::setVar($temp_var, 123, 60 * 60);

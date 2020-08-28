@@ -307,7 +307,8 @@ try {
 //                    , 'delivery' => $res_ar['data'][$now_date]['delivery']
 //                ];
             } else {
-                echo '<br/>всё норм';
+                if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
+                    echo '<br/>всё норм';
             }
 
             continue;
@@ -591,7 +592,9 @@ try {
                 $e .= PHP_EOL . $sps[$v['sale_point']]['head'] . '/' . $v['date'] . '/' . $v['cold'] . ' + ' . $v['hot'] . ' + ' . $v['delivery'];
             }
         } else {
-            $e .= PHP_EOL . 'всё норм, ничего не добавили, не обновили';
+
+            if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
+                $e .= PHP_EOL . 'всё норм, ничего не добавили, не обновили';
         }
 
         \nyos\Msg::sendTelegramm($e, null, 2);
