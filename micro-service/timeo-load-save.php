@@ -1,8 +1,7 @@
 <?php
 
-ini_set('display_errors', 'On'); // сообщения с ошибками будут показываться
-error_reporting(E_ALL); // E_ALL - отображаем ВСЕ ошибки
-//
+//ini_set('display_errors', 'On'); // сообщения с ошибками будут показываться
+//error_reporting(E_ALL); // E_ALL - отображаем ВСЕ ошибки
 //if ($_SERVER['HTTP_HOST'] == 'photo.uralweb.info' || $_SERVER['HTTP_HOST'] == 'yapdomik.uralweb.info' || $_SERVER['HTTP_HOST'] == 'a2.uralweb.info' || $_SERVER['HTTP_HOST'] == 'adomik.uralweb.info' || $_SERVER['HTTP_HOST'] == 'adomik.dev.uralweb.info'
 //) {
 //    date_default_timezone_set("Asia/Omsk");
@@ -21,6 +20,8 @@ error_reporting(E_ALL); // E_ALL - отображаем ВСЕ ошибки
 //require $_SERVER['DOCUMENT_ROOT'] . '/vendor/autoload.php';
 //require( $_SERVER['DOCUMENT_ROOT'] . '/all/ajax.start.php' );
 //
+//if( !isset($__req['sp']) )
+//    throw new \Exception('не указана точка продаж (sp)');
 
 
 if (isset($skip_start) && $skip_start === true) {
@@ -29,9 +30,6 @@ if (isset($skip_start) && $skip_start === true) {
     require_once '0start.php';
     $skip_start = false;
 }
-
-
-
 
 
 foreach (\Nyos\Nyos::$menu as $k => $v) {
@@ -57,7 +55,9 @@ foreach (\Nyos\Nyos::$menu as $k => $v) {
 }
 
 //echo $_SERVER['HTTP_HOST'];
-//\f\pa($_REQUEST,null,null,'$_REQUEST');
+//\f\pa($__req,null,null,'$__req');
+
+$__req = $file_request ?? $_REQUEST;
 
 try {
 
@@ -65,10 +65,10 @@ try {
 
     $type = ['cold', 'hot', 'delivery'];
 
-    // \f\pa($_REQUEST, '', '', '$_REQUEST');
+    // \f\pa($__req, '', '', '$__req');
 
-    $date_start = date('Y-m-01', strtotime($_REQUEST['date']));
-    if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
+    $date_start = date('Y-m-01', strtotime($__req['date']));
+    if (isset($__req['show']))
         \f\pa($date_start, '', '', 'date_start');
 
     $date_finish = date('Y-m-d', strtotime($date_start . ' +1 month -1 day'));
@@ -84,7 +84,7 @@ try {
     $link_sp_timeosp = [];
     foreach ($sps_link_timeo as $k => $v) {
 
-        if (isset($_REQUEST['sp']) && $v['sale_point'] != $_REQUEST['sp'])
+        if (isset($__req['sp']) && $v['sale_point'] != $__req['sp'])
             continue;
 
         // \f\pa($v);
@@ -95,14 +95,6 @@ try {
     // \f\pa($link_sp_timeosp);
 
     \f\timer_start(3);
-
-
-
-
-
-
-
-
 
     $ar__sp_date_time = [];
 
@@ -150,11 +142,11 @@ try {
 
             $res_ar['data'][$k3] = $v3;
         }
-        if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
+        if (isset($__req['show']))
             \f\pa($res_ar, 2, '', 'данные с дата сервера res_ar');
         // die;
 
-        if (isset($_REQUEST['show']) && $_REQUEST['show'] == 'table') {
+        if (isset($__req['show']) && $__req['show'] == 'table') {
             if (isset($res_ar['data'])) {
                 echo 'загрузили данные с сервера времени ожидания'
                 . '<table class="table" ><thead><tr><th>дата</th><th>холодный</th><th>горячий</th><th>доставка</th></tr></thead><tbody>';
@@ -171,7 +163,7 @@ try {
 //            $ar__sp_date_time[$v['id']] = $res_ar['data'];
 //        }
         // echo \f\timer_stop(3,'str');
-//        if (!empty($_REQUEST['show'])) {
+//        if (!empty($__req['show'])) {
 //            \f\pa($link_sp_timeosp, 2, '', '$link_sp_timeosp');
 //            \f\pa($ar__sp_date_time, 2, '', '$ar__sp_date_time');
 //        }
@@ -187,15 +179,15 @@ try {
 //        ;
 //        \Nyos\mod\items::$var_ar_for_1sql[':d'] = $date_start;
 //        \Nyos\mod\items::$var_ar_for_1sql[':d2'] = $date_finish;
-//        \Nyos\mod\items::$var_ar_for_1sql[':sp'] = $_REQUEST['sp'];
+//        \Nyos\mod\items::$var_ar_for_1sql[':sp'] = $__req['sp'];
 
 
 
         \Nyos\mod\items::$between['date'] = [$date_start, $date_finish];
-        \Nyos\mod\items::$search['sale_point'] = $_REQUEST['sp'];
+        \Nyos\mod\items::$search['sale_point'] = $__req['sp'];
         $timeo = \Nyos\mod\items::get($db, \Nyos\mod\JobDesc::$mod_timeo);
 
-        if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
+        if (isset($__req['show']))
             \f\pa($timeo, 2, '', '$timeo в базе');
 //        $timeo0 = [];
 //
@@ -219,7 +211,7 @@ try {
             $time_in_db[$v['date']] = $v;
         }
 
-        if (isset($_REQUEST['show']) && $_REQUEST['show'] == 'table') {
+        if (isset($__req['show']) && $__req['show'] == 'table') {
             \f\pa($time_in_db, 2, '', 'время из базы $time_in_db');
             \f\pa($clear_date, 2, '', 'трём даты так как две записи');
         }
@@ -246,13 +238,13 @@ try {
             if ($now_date >= $now_real_date)
                 break;
 
-            if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
+            if (isset($__req['show']))
                 echo '<br/>date - ' . $now_date;
 
             if (isset($clear_date[$now_date])) {
-                if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
+                if (isset($__req['show']))
                     echo '<br/>эту дату трем ' . $now_date;
-                $ar_clear_dops[] = ['sale_point' => $_REQUEST['sp'], 'date' => $now_date];
+                $ar_clear_dops[] = ['sale_point' => $__req['sp'], 'date' => $now_date];
             }
 
 //            if (isset($time_in_db[$now_date]))
@@ -262,10 +254,10 @@ try {
 
 
             if (isset($res_ar['data'][$now_date]) && !isset($time_in_db[$now_date])) {
-                if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
+                if (isset($__req['show']))
                     echo '<br/>записываем новые данные';
 
-                if (isset($_REQUEST['show']) && $_REQUEST['show'] == 'table') {
+                if (isset($__req['show']) && $__req['show'] == 'table') {
 
                     echo '<table class=table ><tr><td>';
                     \f\pa(( $time_in_db[$now_date] ?? []), '', '');
@@ -276,7 +268,7 @@ try {
 
                 $ar_adds[] = [
                     'date' => $now_date,
-                    'sale_point' => $_REQUEST['sp'],
+                    'sale_point' => $__req['sp'],
                     'cold' => $res_ar['data'][$now_date]['cold']
                     , 'hot' => $res_ar['data'][$now_date]['hot']
                     , 'delivery' => $res_ar['data'][$now_date]['delivery']
@@ -286,10 +278,10 @@ try {
                     $res_ar['data'][$now_date]['cold'] != $time_in_db[$now_date]['cold'] || $res_ar['data'][$now_date]['hot'] != $time_in_db[$now_date]['hot'] || $res_ar['data'][$now_date]['delivery'] != $time_in_db[$now_date]['delivery']
                     )
             ) {
-                if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
+                if (isset($__req['show']))
                     echo '<br/>данные есть и не сходятся';
 
-                if (isset($_REQUEST['show']) && $_REQUEST['show'] == 'table') {
+                if (isset($__req['show']) && $__req['show'] == 'table') {
                     echo '<table class=table ><tr><td>';
                     \f\pa(( $time_in_db[$now_date] ?? []), '', '');
                     echo '</td><td>';
@@ -297,17 +289,17 @@ try {
                     echo '</td></tr></table>';
                 }
 
-                $ar_clear_dops[] = ['sale_point' => $_REQUEST['sp'], 'date' => $now_date];
+                $ar_clear_dops[] = ['sale_point' => $__req['sp'], 'date' => $now_date];
 
 //                $ar_adds[] = [
 //                    'date' => $now_date,
-//                    'sale_point' => $_REQUEST['sp'],
+//                    'sale_point' => $__req['sp'],
 //                    'cold' => $res_ar['data'][$now_date]['cold']
 //                    , 'hot' => $res_ar['data'][$now_date]['hot']
 //                    , 'delivery' => $res_ar['data'][$now_date]['delivery']
 //                ];
             } else {
-                if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
+                if (isset($__req['show']))
                     echo '<br/>всё норм';
             }
 
@@ -327,10 +319,9 @@ try {
 
                     $check_data_date = true;
 
-                    if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
+                    if (isset($__req['show'])) {
                         echo '<br/><hr><hr>уже есть';
 
-                    if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false) {
                         \f\pa($v1, '', '', 'что в базе');
                         \f\pa($res_ar['data'][$now_date], '', '', 'что загрузили с сервера');
                     }
@@ -346,7 +337,7 @@ try {
                         $ar_adds[] = [
                             'date' => $now_date,
                             'info' => 'данные не сходятся',
-                            'sale_point' => $_REQUEST['sp'],
+                            'sale_point' => $__req['sp'],
                             'cold' => ( $v1['cold'] ?? 0 )
                             , 'hot' => ( $v1['hot'] ?? 0 )
                             , 'delivery' => ( $v1['delivery'] ?? 0 )
@@ -361,7 +352,7 @@ try {
                 if ($check_data_date === false) {
                     $ar_adds[] = [
                         'date' => $now_date,
-                        'sale_point' => $_REQUEST['sp'],
+                        'sale_point' => $__req['sp'],
                         'cold' => ( $v1['cold'] ?? 0 )
                         , 'hot' => ( $v1['hot'] ?? 0 )
                         , 'delivery' => ( $v1['delivery'] ?? 0 )
@@ -372,7 +363,7 @@ try {
 
         // \f\pa($clear_date,2,'','$clear_date');
 
-        if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
+        if (isset($__req['show']))
             \f\pa($ar_adds, 2, '', '$ar_adds');
 
         // \Nyos\mod\items::addNewSimples($db, \Nyos\mod\JobDesc::$mod_timeo, $ar_adds);
@@ -430,11 +421,11 @@ try {
                     unset($ar['id']);
                 }
 
-                if ($res_ar['data'][$now_date] != $ar || isset($_REQUEST['delete_old'])) {
+                if ($res_ar['data'][$now_date] != $ar || isset($__req['delete_old'])) {
 
                     $clear_id_timeo[$now_id] = 1;
 
-                    if (isset($_REQUEST['show']))
+                    if (isset($__req['show']))
                         echo '<br/>#' . __LINE__ . ' (' . $sps[$v['sale_point']]['head'] . ') значения за ' . $now_date . ' не сходятся, запишем новые значения';
 
                     $ss = [
@@ -474,7 +465,7 @@ try {
         if (!empty($sql2)) {
             $sql = 'UPDATE `mitems` SET `status` = \'delete\' WHERE ' . $sql2;
 
-            if (isset($_REQUEST['show'])) {
+            if (isset($__req['show'])) {
                 \f\pa($sql);
                 \f\pa($sql_in);
             }
@@ -501,17 +492,18 @@ try {
             }
         }
 
-        if (isset($_REQUEST['show'])) {
-            if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
+        if (isset($__req['show'])) {
+            if (isset($__req['show']))
                 echo '<br/>обновили дней:' . sizeof($new_db);
             //\f\pa($new_db, 2, '', '$new_db');
         }
 
         // \f\pa($new_db,'','','$new_db');
-        $we = \Nyos\mod\items::addNewSimples($db, \Nyos\mod\JobDesc::$mod_timeo, $new_db);
+        // $we = \Nyos\mod\items::addNewSimples($db, \Nyos\mod\JobDesc::$mod_timeo, $new_db);
+        $we = \Nyos\mod\items::adds($db, \Nyos\mod\JobDesc::$mod_timeo, $new_db);
         // \f\pa($we,'','','$we');
     } else {
-        if (isset($_REQUEST['show']))
+        if (isset($__req['show']))
             echo '<br/>всё норм, ничего не добавили, не обновили';
     }
 
@@ -569,16 +561,16 @@ try {
         }
 
         // новые полные записи
-        if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
+        if (isset($__req['show']))
             \f\pa($new_db, 2, '', '$new_db');
         \Nyos\mod\items::addNewSimples($db, \Nyos\mod\JobDesc::$mod_timeo, $new_db);
-        if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
+        if (isset($__req['show']))
             \f\pa($edit_dops, 2, '', '$edit_dops');
         \Nyos\mod\items::saveNewDop($db, $edit_dops);
     }
 
 
-    if (1 == 1 && !isset($_REQUEST['skip_send_msg']) && class_exists('\\Nyos\\Msg')) {
+    if (1 == 1 && !isset($__req['skip_send_msg']) && class_exists('\\Nyos\\Msg')) {
 
         $e = 'Время ожидания'
                 . PHP_EOL
@@ -593,7 +585,7 @@ try {
             }
         } else {
 
-            if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
+            if (isset($__req['show']))
                 $e .= PHP_EOL . 'всё норм, ничего не добавили, не обновили';
         }
 
@@ -606,18 +598,30 @@ try {
     // чистим кеш
     \f\Cash::deleteKeyPoFilter(['time_expectations', 'ds' . $date_start]);
 
-    if (isset($_REQUEST['show']))
+    if (isset($__req['show']))
         echo $r;
 
-    \f\end2('ok' . ( $r ?? '--' ), true, [
-        'load_kolvo' => sizeof($new_db ?? [])
-        ,
-        'in_db' => sizeof($new_db ?? [])
-        ,
-        'new' => ( $new_db ?? [] )
-        ,
-        'request' => ( $_REQUEST ?? [] )
-    ]);
+    if (!empty($file_return) && $file_return == 'array') {
+        return ['ok' . ( $r ?? '--' ), true, [
+            'load_kolvo' => sizeof($new_db ?? [])
+            ,
+            'in_db' => sizeof($new_db ?? [])
+            ,
+            'new' => ( $new_db ?? [] )
+            ,
+            'request' => ( $__req ?? [] )
+            ]];
+    } else {
+        \f\end2('ok' . ( $r ?? '--' ), true, [
+            'load_kolvo' => sizeof($new_db ?? [])
+            ,
+            'in_db' => sizeof($new_db ?? [])
+            ,
+            'new' => ( $new_db ?? [] )
+            ,
+            'request' => ( $__req ?? [] )
+        ]);
+    }
 }
 //
 catch (\Exception $ex) {
@@ -634,4 +638,10 @@ catch (\Exception $ex) {
 
     // die( \f\end2( $e, false ) );
     die(\f\end2('Произошла неописуемая ситуация #' . __LINE__, false));
+}
+
+
+
+if (!empty($file_return) && $file_return == 'array') {
+    return ['file' => __FILE__, 'line' => __LINE__];
 }
