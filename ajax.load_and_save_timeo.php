@@ -3,51 +3,23 @@
 ini_set('display_errors', 'On'); // сообщения с ошибками будут показываться
 error_reporting(E_ALL); // E_ALL - отображаем ВСЕ ошибки
 
-
-//if ($_SERVER['HTTP_HOST'] == 'photo.uralweb.info' || $_SERVER['HTTP_HOST'] == 'yapdomik.uralweb.info' || $_SERVER['HTTP_HOST'] == 'a2.uralweb.info' || $_SERVER['HTTP_HOST'] == 'adomik.uralweb.info' || $_SERVER['HTTP_HOST'] == 'adomik.dev.uralweb.info'
-//) {
-//    date_default_timezone_set("Asia/Omsk");
-//} else {
-//    date_default_timezone_set("Asia/Yekaterinburg");
-//}
-
-//define('IN_NYOS_PROJECT', true);
-//
-//// ini_set("max_execution_time", 120);
-//ini_set("max_execution_time", 59);
-//
-//header("Cache-Control: no-store, no-cache, must-revalidate");
-//header("Expires: " . date("r"));
-//
-//require $_SERVER['DOCUMENT_ROOT'] . '/vendor/autoload.php';
-//require( $_SERVER['DOCUMENT_ROOT'] . '/all/ajax.start.php' );
-//
-//if (!defined('IN_NYOS_PROJECT'))
-//    define('IN_NYOS_PROJECT', TRUE);
-//
-//if (file_exists($_SERVER['DOCUMENT_ROOT'] . '/vendor/autoload.php'))
-//    require $_SERVER['DOCUMENT_ROOT'] . '/vendor/autoload.php';
-
-
-
-if (isset($skip_start) && $skip_start === true) {
-    
+if ($_SERVER['HTTP_HOST'] == 'photo.uralweb.info' || $_SERVER['HTTP_HOST'] == 'yapdomik.uralweb.info' || $_SERVER['HTTP_HOST'] == 'a2.uralweb.info' || $_SERVER['HTTP_HOST'] == 'adomik.uralweb.info' || $_SERVER['HTTP_HOST'] == 'adomik.dev.uralweb.info'
+) {
+    date_default_timezone_set("Asia/Omsk");
 } else {
-    require_once '0start.php';
-    $skip_start = false;
+    date_default_timezone_set("Asia/Yekaterinburg");
 }
 
+define('IN_NYOS_PROJECT', true);
 
-//echo '<hr><hr>';
-//echo __FILE__;
-//echo '<hr><hr>';
-//
-//\f\pa($_REQUEST, '', '', 'request');
-//\f\pa($_GET, '', '', 'get');
-//\f\pa($_POST, '', '', 'post');
+// ini_set("max_execution_time", 120);
+ini_set("max_execution_time", 59);
 
-// echo '<blockquote style="left-border: 2px solid green; padding-left: 10px; margin-bottom: 10px;" >';
+header("Cache-Control: no-store, no-cache, must-revalidate");
+header("Expires: " . date("r"));
 
+require $_SERVER['DOCUMENT_ROOT'] . '/vendor/autoload.php';
+require( $_SERVER['DOCUMENT_ROOT'] . '/all/ajax.start.php' );
 
 foreach (\Nyos\Nyos::$menu as $k => $v) {
     if (isset($v['type_api']) && $v['type_api'] == 'time_expectation') {
@@ -78,25 +50,17 @@ try {
 
     ob_start('ob_gzhandler');
 
-    $type = [
-        'cold',
-        // 'hot', 
-        // 'delivery',
-        'delivery_a',
-        'delivery_b'
-    ];
+    $type = ['cold', 'hot', 'delivery'];
 
     // \f\pa($_REQUEST, '', '', '$_REQUEST');
 
     $date_start = date('Y-m-01', strtotime($_REQUEST['date']));
-    if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
-        \f\pa($date_start, '', '', 'date_start');
+    \f\pa($date_start, '', '', 'date_start');
 
     $date_finish = date('Y-m-d', strtotime($date_start . ' +1 month -1 day'));
 
     // чистим кеш
     \f\Cash::deleteKeyPoFilter(['time_expectations', 'ds' . $date_start]);
-    // \f\Cash::deleteKeyPoFilter(['time', 'ds' . $date_start]);
 
     $sps = \Nyos\mod\items::get($db, \Nyos\mod\JobDesc::$mod_sale_point);
     $sps_link_timeo = \Nyos\mod\items::get($db, \Nyos\mod\JobDesc::$mod_sp_link_timeo);
@@ -141,30 +105,25 @@ try {
 
 
 
-// echo '<blockquote>';
+
 
     foreach ($sps as $k => $v) {
 
         // \f\pa($v);
 
-        if ( empty($link_sp_timeosp[$v['id']]) )
+        if (!isset($link_sp_timeosp[$v['id']]))
             continue;
 
-        \f\pa($v,2,'','link_time');
-        
-        $q = [
-            'sp' => $link_sp_timeosp[$v['id']],
+        $q = ['sp' => $link_sp_timeosp[$v['id']],
             // 'date' => '2020-02-01',
             'date' => $date_start,
-            's' => md5($link_sp_timeosp[$v['id']] . 'time' . date('Y-m-d') )
+            's' => md5($link_sp_timeosp[$v['id']] . 'time' . $date_start)
         ];
 
         $uri = 'http://time-exp.uralweb.info/api.php?' . http_build_query($q);
         // \f\pa($uri,'','','uri');
         $res_ar0 = json_decode(file_get_contents($uri), true);
-
-        \f\pa($res_ar0, 2, '', 'данные с дата сервера res_ar0');
-
+        // \f\pa($res_ar0, 2, '', 'данные с дата сервера res_ar0');
         $res_ar = [];
         foreach ($res_ar0['data'] as $k3 => $v3) {
 
@@ -174,35 +133,18 @@ try {
                 $v3['cold'] = 0;
             if (!isset($v3['delivery']))
                 $v3['delivery'] = 0;
-            if (!isset($v3['delivery_a']))
-                $v3['delivery_a'] = 0;
-            if (!isset($v3['delivery_b']))
-                $v3['delivery_b'] = 0;
 
             $res_ar['data'][$k3] = $v3;
         }
-
-
-        if ( strpos($_SERVER['HTTP_HOST'], 'dev') !== false )
-            \f\pa( ( $res_ar ?? [] ) , 2, '', 'данные с дата сервера res_ar');
-
-
+        \f\pa($res_ar, 2, '', 'данные с дата сервера res_ar');
         // die;
 
         if (isset($_REQUEST['show']) && $_REQUEST['show'] == 'table') {
             if (isset($res_ar['data'])) {
                 echo 'загрузили данные с сервера времени ожидания'
-                . '<table class="table" ><thead><tr><th>дата</th><th>холодный</th><th>горячий</th>'
-                . '<th>доставка</th>'
-                . '<th>доставка a</th>'
-                . '<th>доставка b</th>'
-                . '</tr></thead><tbody>';
+                . '<table class="table" ><thead><tr><th>дата</th><th>холодный</th><th>горячий</th><th>доставка</th></tr></thead><tbody>';
                 foreach ($res_ar['data'] as $date => $m) {
-                    echo '<tr><td>' . $date . '</td><td>' . ( $m['cold'] ?? '-' ) . '</td><td>' . ( $m['hot'] ?? '-' ) . '</td>'
-                    . '<td>' . ( $m['delivery'] ?? '-' ) . '</td>'
-                    . '<td>' . ( $m['delivery_a'] ?? '-' ) . '</td>'
-                    . '<td>' . ( $m['delivery_b'] ?? '-' ) . '</td>'
-                    . '</tr>';
+                    echo '<tr><td>' . $date . '</td><td>' . ( $m['cold'] ?? '-' ) . '</td><td>' . ( $m['hot'] ?? '-' ) . '</td><td>' . ( $m['delivery'] ?? '-' ) . '</td></tr>';
                 }
                 echo '</tbody></table>';
             }
@@ -218,28 +160,33 @@ try {
 //            \f\pa($link_sp_timeosp, 2, '', '$link_sp_timeosp');
 //            \f\pa($ar__sp_date_time, 2, '', '$ar__sp_date_time');
 //        }
-//        \Nyos\mod\items::$join_where = ' INNER JOIN `mitems-dops` mid '
-//                . ' ON mid.id_item = mi.id '
-//                . ' AND mid.name = \'date\' '
-//                . ' AND mid.value_date >= :d '
-//                . ' AND mid.value_date <= :d2 '
-//                . ' INNER JOIN `mitems-dops` mid2 '
-//                . ' ON mid2.id_item = mi.id '
-//                . ' AND mid2.name = \'sale_point\' '
-//                . ' AND mid2.value = :sp '
-//        ;
-//        \Nyos\mod\items::$var_ar_for_1sql[':d'] = $date_start;
-//        \Nyos\mod\items::$var_ar_for_1sql[':d2'] = $date_finish;
-//        \Nyos\mod\items::$var_ar_for_1sql[':sp'] = $_REQUEST['sp'];
 
 
 
-        \Nyos\mod\items::$between['date'] = [$date_start, $date_finish];
-        \Nyos\mod\items::$search['sale_point'] = $_REQUEST['sp'];
+
+
+        \Nyos\mod\items::$join_where = ' INNER JOIN `mitems-dops` mid '
+                . ' ON mid.id_item = mi.id '
+                . ' AND mid.name = \'date\' '
+                . ' AND mid.value_date >= :d '
+                . ' AND mid.value_date <= :d2 '
+                . ' INNER JOIN `mitems-dops` mid2 '
+                . ' ON mid2.id_item = mi.id '
+                . ' AND mid2.name = \'sale_point\' '
+                . ' AND mid2.value = :sp '
+        ;
+        \Nyos\mod\items::$var_ar_for_1sql[':d'] = $date_start;
+        \Nyos\mod\items::$var_ar_for_1sql[':d2'] = $date_finish;
+        \Nyos\mod\items::$var_ar_for_1sql[':sp'] = $_REQUEST['sp'];
+
         $timeo = \Nyos\mod\items::get($db, \Nyos\mod\JobDesc::$mod_timeo);
-
-        if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
-            \f\pa($timeo, 2, '', '$timeo в базе');
+        // \f\pa($timeo, 2, '', '$timeo в базе');
+//        $timeo0 = [];
+//
+//        foreach ($timeo as $k5 => $v5) {
+//            $timeo0[$v5['date']] = $v5;
+//        }
+//        \f\pa($timeo0, 2, '', '$timeo0 в базе');
 
         $time_in_db = [];
 
@@ -260,9 +207,6 @@ try {
             \f\pa($time_in_db, 2, '', 'время из базы $time_in_db');
             \f\pa($clear_date, 2, '', 'трём даты так как две записи');
         }
-
-
-        \f\pa($res_ar, '', '', '$res_ar');
 
         /**
          * массив допоов которые трём перед добавлением
@@ -286,12 +230,10 @@ try {
             if ($now_date >= $now_real_date)
                 break;
 
-            if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
-                echo '<br/>date - ' . $now_date;
+            echo '<br/>date - ' . $now_date;
 
             if (isset($clear_date[$now_date])) {
-                if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
-                    echo '<br/>эту дату трем ' . $now_date;
+                echo '<br/>эту дату трем ' . $now_date;
                 $ar_clear_dops[] = ['sale_point' => $_REQUEST['sp'], 'date' => $now_date];
             }
 
@@ -301,10 +243,8 @@ try {
 //                \f\pa($res_ar['data'][$now_date], '', '');
 
 
-            if (!empty($res_ar['data'][$now_date]) && empty($time_in_db[$now_date])) {
-
-                if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
-                    echo '<br/>записываем новые данные';
+            if (isset($res_ar['data'][$now_date]) && !isset($time_in_db[$now_date])) {
+                echo '<br/>записываем новые данные';
 
                 if (isset($_REQUEST['show']) && $_REQUEST['show'] == 'table') {
 
@@ -319,20 +259,15 @@ try {
                     'date' => $now_date,
                     'sale_point' => $_REQUEST['sp'],
                     'cold' => $res_ar['data'][$now_date]['cold']
-                    // , 'hot' => $res_ar['data'][$now_date]['hot']
-                    // , 'delivery' => $res_ar['data'][$now_date]['delivery']
-                    , 'delivery_a' => $res_ar['data'][$now_date]['delivery_a']
-                    , 'delivery_b' => $res_ar['data'][$now_date]['delivery_b']
+                    , 'hot' => $res_ar['data'][$now_date]['hot']
+                    , 'delivery' => $res_ar['data'][$now_date]['delivery']
                 ];
-            }
-            //
-            elseif (
+            } elseif (
                     isset($res_ar['data'][$now_date]) && isset($time_in_db[$now_date]) && (
                     $res_ar['data'][$now_date]['cold'] != $time_in_db[$now_date]['cold'] || $res_ar['data'][$now_date]['hot'] != $time_in_db[$now_date]['hot'] || $res_ar['data'][$now_date]['delivery'] != $time_in_db[$now_date]['delivery']
                     )
             ) {
-                if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
-                    echo '<br/>данные есть и не сходятся';
+                echo '<br/>данные есть и не сходятся';
 
                 if (isset($_REQUEST['show']) && $_REQUEST['show'] == 'table') {
                     echo '<table class=table ><tr><td>';
@@ -351,11 +286,13 @@ try {
 //                    , 'hot' => $res_ar['data'][$now_date]['hot']
 //                    , 'delivery' => $res_ar['data'][$now_date]['delivery']
 //                ];
-            } else {
-                if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
-                    echo '<br/>всё норм';
-            }
 
+            } 
+            else 
+            {
+                echo '<br/>всё норм';
+            }
+            
             continue;
 
 
@@ -371,14 +308,10 @@ try {
                 if ($v1['date'] == $now_date) {
 
                     $check_data_date = true;
+                    echo '<br/><hr><hr>уже есть';
 
-                    if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
-                        echo '<br/><hr><hr>уже есть';
-
-                    if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false) {
-                        \f\pa($v1, '', '', 'что в базе');
-                        \f\pa($res_ar['data'][$now_date], '', '', 'что загрузили с сервера');
-                    }
+                    \f\pa($v1, '', '', 'что в базе');
+                    \f\pa($res_ar['data'][$now_date], '', '', 'что загрузили с сервера');
 
                     if (
                             ( ( $v1['cold'] ?? 0 ) != ( $res_ar['data'][$now_date]['cold'] ?? 0 ) ) ||
@@ -395,8 +328,6 @@ try {
                             'cold' => ( $v1['cold'] ?? 0 )
                             , 'hot' => ( $v1['hot'] ?? 0 )
                             , 'delivery' => ( $v1['delivery'] ?? 0 )
-                            , 'delivery_a' => ( $v1['delivery_a'] ?? 0 )
-                            , 'delivery_b' => ( $v1['delivery_b'] ?? 0 )
                         ];
                     }
 
@@ -404,9 +335,7 @@ try {
                 }
             }
 
-            if (
-                    !empty($res_ar['data'][$now_date]['cold']) || !empty($res_ar['data'][$now_date]['hot']) || !empty($res_ar['data'][$now_date]['delivery'])
-            ) {
+            if (!empty($res_ar['data'][$now_date]['cold']) || !empty($res_ar['data'][$now_date]['hot']) || !empty($res_ar['data'][$now_date]['delivery'])) {
                 if ($check_data_date === false) {
                     $ar_adds[] = [
                         'date' => $now_date,
@@ -414,27 +343,18 @@ try {
                         'cold' => ( $v1['cold'] ?? 0 )
                         , 'hot' => ( $v1['hot'] ?? 0 )
                         , 'delivery' => ( $v1['delivery'] ?? 0 )
-                        , 'delivery_a' => ( $v1['delivery_a'] ?? 0 )
-                        , 'delivery_b' => ( $v1['delivery_b'] ?? 0 )
                     ];
                 }
             }
         }
 
         // \f\pa($clear_date,2,'','$clear_date');
+        \f\pa($ar_adds, 2, '', '$ar_adds');
+        \Nyos\mod\items::addNewSimples($db, \Nyos\mod\JobDesc::$mod_timeo, $ar_adds);
 
-        if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
-            \f\pa($ar_adds, 2, '', '$ar_adds');
+        \f\pa($ar_clear_dops, 2, '', '$ar_clear_dops');
+        \Nyos\mod\items::deleteFromDopsMany($db, \Nyos\mod\JobDesc::$mod_timeo, $ar_clear_dops);
 
-        // \Nyos\mod\items::addNewSimples($db, \Nyos\mod\JobDesc::$mod_timeo, $ar_adds);
-
-        if (!empty($ar_adds)) {
-            $ee = \Nyos\mod\items::adds($db, \Nyos\mod\JobDesc::$mod_timeo, $ar_adds);
-            // \f\pa($ee);
-        }
-
-        // \f\pa($ar_clear_dops, 2, '', '$ar_clear_dops');
-        // \Nyos\mod\items::deleteFromDopsMany($db, \Nyos\mod\JobDesc::$mod_timeo, $ar_clear_dops);
         \f\Cash::deleteKeyPoFilter([\Nyos\mod\JobDesc::$mod_timeo]);
 
 //        die();
@@ -449,6 +369,7 @@ try {
 //                    $indb__sp_date_ceh_time[$v['sale_point']][$v['date']][$type1] = $v[$type1];
 //            }
 //        }
+
 //        \f\pa($indb__sp_date_ceh_time, 2, '', '$indb__sp_date_ceh_time');
 //
 //        // foreach ($res_ar['data'] as $date => $ar) {
@@ -456,61 +377,60 @@ try {
 //            
 //        }
 
-        if (1 == 2)
-            for ($n = 0; $n <= 32; $n++) {
+        if( 1 == 2 )
+        for ($n = 0; $n <= 32; $n++) {
 
-                $now_date = date('Y-m-d', strtotime($date_start . ' +' . $n . ' day'));
+            $now_date = date('Y-m-d', strtotime($date_start . ' +' . $n . ' day'));
 
-                if ($now_date >= $now_real_date)
-                    continue;
+            if ($now_date >= $now_real_date)
+                continue;
 
-                // \f\pa($now_date);
-                // \f\pa($indb__sp_date_ceh_time[$v['sale_point']][$now_date], '', '', '$indb__sp_date_ceh_time');
+            // \f\pa($now_date);
+            // \f\pa($indb__sp_date_ceh_time[$v['sale_point']][$now_date], '', '', '$indb__sp_date_ceh_time');
 
-                foreach ($type as $type1) {
-                    if (!isset($res_ar['data'][$now_date][$type1])) {
-                        $res_ar['data'][$now_date][$type1] = 0;
-                    }
+            foreach ($type as $type1) {
+                if (!isset($res_ar['data'][$now_date][$type1])) {
+                    $res_ar['data'][$now_date][$type1] = 0;
                 }
-                // \f\pa($res_ar['data'][$now_date], '', '', '$res_ar');
+            }
+            // \f\pa($res_ar['data'][$now_date], '', '', '$res_ar');
 //            if( !isset($indb__sp_date_ceh_time[$v['sale_point']][$now_date]) )
 //                continue;
 
-                $ar = $indb__sp_date_ceh_time[$v['sale_point']][$now_date] ?? [];
+            $ar = $indb__sp_date_ceh_time[$v['sale_point']][$now_date] ?? [];
 
-                if (isset($ar['id'])) {
-                    $now_id = $ar['id'];
-                    unset($ar['id']);
+            if (isset($ar['id'])) {
+                $now_id = $ar['id'];
+                unset($ar['id']);
+            }
+
+            if ($res_ar['data'][$now_date] != $ar || isset($_REQUEST['delete_old'])) {
+
+                $clear_id_timeo[$now_id] = 1;
+
+                if (isset($_REQUEST['show']))
+                    echo '<br/>#' . __LINE__ . ' (' . $sps[$v['sale_point']]['head'] . ') значения за ' . $now_date . ' не сходятся, запишем новые значения';
+
+                $ss = [
+                    'date' => $now_date,
+                    'sale_point' => $v['sale_point'],
+                ];
+
+                foreach ($type as $t) {
+                    $ss[$t] = $res_ar['data'][$now_date][$t] ?? 0;
                 }
 
-                if ($res_ar['data'][$now_date] != $ar || isset($_REQUEST['delete_old'])) {
-
-                    $clear_id_timeo[$now_id] = 1;
-
-                    if (isset($_REQUEST['show']))
-                        echo '<br/>#' . __LINE__ . ' (' . $sps[$v['sale_point']]['head'] . ') значения за ' . $now_date . ' не сходятся, запишем новые значения';
-
-                    $ss = [
-                        'date' => $now_date,
-                        'sale_point' => $v['sale_point'],
-                    ];
-
-                    foreach ($type as $t) {
-                        $ss[$t] = $res_ar['data'][$now_date][$t] ?? 0;
-                    }
-
-                    $new_db[] = $ss;
-                    continue;
-                }
+                $new_db[] = $ss;
+                continue;
+            }
 //            else {
 //                echo '#' . __LINE__ . ' сходится';
 //            }
 //            echo '<hr>';
 //            echo '<hr>';
-            }
+        }
     }
 
-// echo '</blockquote>';    
 // стираем старые id что заменяем новыми
     if (1 == 2) {
         // \f\pa($clear_id_timeo, 2, '', '$clear_id_timeo');
@@ -538,7 +458,7 @@ try {
         }
     }
 
-    // \f\pa($new_db,'','','$new_db');
+    //\f\pa($new_db,'','','$new_db0');
 
     if (!empty($new_db)) {
 
@@ -556,8 +476,7 @@ try {
         }
 
         if (isset($_REQUEST['show'])) {
-            if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
-                echo '<br/>обновили дней:' . sizeof($new_db);
+            echo '<br/>обновили дней:' . sizeof($new_db);
             //\f\pa($new_db, 2, '', '$new_db');
         }
 
@@ -623,11 +542,9 @@ try {
         }
 
         // новые полные записи
-        if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
-            \f\pa($new_db, 2, '', '$new_db');
+        \f\pa($new_db, 2, '', '$new_db');
         \Nyos\mod\items::addNewSimples($db, \Nyos\mod\JobDesc::$mod_timeo, $new_db);
-        if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
-            \f\pa($edit_dops, 2, '', '$edit_dops');
+        \f\pa($edit_dops, 2, '', '$edit_dops');
         \Nyos\mod\items::saveNewDop($db, $edit_dops);
     }
 
@@ -646,9 +563,7 @@ try {
                 $e .= PHP_EOL . $sps[$v['sale_point']]['head'] . '/' . $v['date'] . '/' . $v['cold'] . ' + ' . $v['hot'] . ' + ' . $v['delivery'];
             }
         } else {
-
-            if (strpos($_SERVER['HTTP_HOST'], 'dev') !== false)
-                $e .= PHP_EOL . 'всё норм, ничего не добавили, не обновили';
+            $e .= PHP_EOL . 'всё норм, ничего не добавили, не обновили';
         }
 
         \nyos\Msg::sendTelegramm($e, null, 2);
@@ -662,10 +577,8 @@ try {
 
     if (isset($_REQUEST['show']))
         echo $r;
-
-// echo '</blockquote>';
-
-    \f\end2('ok' . ( $r ?? '--' ), true, [
+    
+    \f\end2( 'ok' . ( $r ?? '--' ), true, [
         'load_kolvo' => sizeof($new_db ?? [])
         ,
         'in_db' => sizeof($new_db ?? [])
@@ -688,11 +601,6 @@ catch (\Exception $ex) {
     if (class_exists('\nyos\Msg'))
         \nyos\Msg::sendTelegramm($e, null, 2);
 
-    
-// echo '</blockquote>';
-
     // die( \f\end2( $e, false ) );
     die(\f\end2('Произошла неописуемая ситуация #' . __LINE__, false));
 }
-
-
