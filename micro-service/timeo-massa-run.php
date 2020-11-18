@@ -191,9 +191,10 @@ try {
                     \f\pa($res, '', '', 'result2');
 
 
-                foreach ($res['new'] as $q => $w) {
-                    $msg .= PHP_EOL . $w['date'] . ' / ' . ( $w['cold'] ?? '-' ) . ' ' . ( $w['hot'] ?? '-' ) . ' ' . ( $w['delivery'] ?? '-' );
-                }
+                if (!empty($res['new']))
+                    foreach ($res['new'] as $q => $w) {
+                        $msg .= PHP_EOL . $w['date'] . ' / ' . ( $w['cold'] ?? '-' ) . ' ' . ( $w['hot'] ?? '-' ) . ' ' . ( $w['delivery'] ?? '-' );
+                    }
 
                 curl_close($curl); //закрытие сеанса
                 // \f\Cash::setVar($temp_var, 1, ( $time_expire ?? 60 * 60 * 1));
